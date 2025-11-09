@@ -15,7 +15,7 @@ COLORS = {
     'bg_white': '#FFFFFF',     # Blanc
     'text_dark': '#0F2847',    # Texte foncé
     'text_light': '#FFFFFF',   # Texte clair
-    'success': '#28A745',      # Vert succès
+    'success': "#A78728",      # Vert succès
     'warning': '#FFC107',      # Orange avertissement
     'border': '#D1D9E6'        # Bordure grise
 }

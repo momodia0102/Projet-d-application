@@ -1,4 +1,4 @@
-"""Script de lancement simple"""
+"""Script de lancement """
 import sys
 from pathlib import Path
 
