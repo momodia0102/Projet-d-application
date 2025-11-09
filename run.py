@@ -1,4 +1,4 @@
-"""Script de lancement simple"""
+"""Script de lancement simple voici ma midif"""
 import sys
 from pathlib import Path
 
