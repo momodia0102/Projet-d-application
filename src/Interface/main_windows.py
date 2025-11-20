@@ -104,6 +104,7 @@ class MainWindow:
 
         self.robo = None
         self.init_example_robot()
+        self.mgd_text_widget = None
 
     def init_example_robot(self):
         """Initialiser ou charger un robot par défaut """
@@ -144,13 +145,13 @@ class MainWindow:
                 frame_idx =1
                 theta = float(joint['theta'].get())
                 d_val = float(joint['d'].get())
-                r_val = float(joint['r'].get())
-                alpha = float(joint('alpha').get())
+                a_val = float(joint['a'].get())
+                alpha = float(joint['alpha'].get())
                 joint_type = joint['type'].get()
 
                 self.robo.put_val(frame_idx, 'theta', theta)
                 self.robo.put_val(frame_idx, 'd',d_val)
-                self.robo.put_val(frame_idx, 'r', r_val)
+                self.robo.put_val(frame_idx, 'a', a_val)
                 self.robo.put_val(frame_idx, 'alpha', alpha)
 
                 sigma = 0 if 'R' in joint_type else 1
@@ -159,7 +160,7 @@ class MainWindow:
             print("✅ Paramètres DH synchronisés avec le robot ")
         except Exception as e:
                     print(f"❌ Erreur synchronisation DH: {e}")
-        messagebox.showerror("Erreur", f"Erreur lors de la synchronisation des paramètres: {e}")
+                    messagebox.showerror("Erreur", f"Erreur lors de la synchronisation des paramètres: {e}")
 
     def calculate_mgd(self):
         """Calculer le modèle Géométrique Direct"""
@@ -171,7 +172,7 @@ class MainWindow:
                 return
             
             nf = self.robo.NF
-            frames = [(o, nf-1)]
+            frames = [(0, nf-1)]
             trig_subs = True
 
             model = geometry.direct_geometric(self.robo, frames, trig_subs)
@@ -185,7 +186,7 @@ class MainWindow:
 
         except Exception as e :
              print(f"❌ Erreur calcul MGD: {e}")
-        messagebox.showerror("Erreur", f"Erreur lors du calcul MGD: {e}")
+             messagebox.showerror("Erreur", f"Erreur lors du calcul MGD: {e}")
 
     def read_output(self, file_path):
         """Lire le contenu du fichier de Sortie"""
@@ -197,36 +198,23 @@ class MainWindow:
             return  f"❌ Erreur lecture fichier: {e}\n\nChemin: {file_path}"
 
     def display_mgd_result(self, result_text):
-        """Afficher le résultat MGD dans l'onglet correspondant"""
+            """Afficher le résultat MGD dans l'onglet correspondant"""
+            
+            text_widget = self.mgd_text_widget # <--- Utiliser le widget stocké
+            
+            if text_widget:
+                text_widget.configure(state = 'normal')
+                text_widget.delete('1.0', tk.END)
+                text_widget.insert('1.0',"📐 RÉSULTATS DU MODÈLE GÉOMÉTRIQUE DIRECT\n\n" )
+                text_widget.insert(tk.END, "="*60 + "\n\n")
+                text_widget.insert(tk.END, result_text)
+                text_widget.configure(state='disabled')
+                # Plus besoin de 'return', la fonction est terminée
+            else:
+                print("❌ Erreur d'affichage: Widget MGD non trouvé.")
+                                
 
-        for widget in self.root.winfo_children():
-            if isinstance(widget, tk.Toplevel):
-                continue
 
-            for child in widget.winfo_children():
-                if hasattr(child, 'winfo_children'):
-                    for subchild in child.winfo_children():
-                        if isinstance(subchild, ttk.Notebook):
-                            mgd_frame = subchild.winfo_children()[0]
-                            text_widget = self.find_text_widget(mgd_frame)
-                            if text_widget:
-                                text_widget.configure(state = 'normal')
-                                text_widget.delete('1.0', tk.END)
-                                text_widget.insert('1.0',"📐 RÉSULTATS DU MODÈLE GÉOMÉTRIQUE DIRECT\n\n" )
-                                text_widget.insert(tk.END, "="*60 + "\n\n")
-                                text_widget.insert(tk.END, result_text)
-                                text_widget.configure(state='disabled')
-                                return
-    def find_text_widget(self, parent):
-        """Trouver le widget Text dans une hiérarchie de widgets"""
-        for child in parent.winfo_children():
-            if isinstance(child, tk.Text):
-                return child
-            if hasattr(child, 'winfo_children'):
-                result = self.find_text_widget(child)
-                if result:
-                    return result
-        return None
 
     def setup_window(self):
         """Configuration de la fenêtre principale"""
@@ -717,7 +705,7 @@ class MainWindow:
         # Onglet MGD
         mgd_frame = tk.Frame(notebook, bg=COLORS['bg_white'])
         notebook.add(mgd_frame, text="📐 MGD")
-        self.create_result_tab(mgd_frame, "Modèle Géométrique Direct",
+        self.mgd_text_widget = self.create_result_tab(mgd_frame, "Modèle Géométrique Direct",
                               "Calcule la position de l'effecteur à partir des angles articulaires")
         
         # Onglet MGI
@@ -786,6 +774,8 @@ class MainWindow:
         
         text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        return text
         
     def create_footer(self):
         """Crée le pied de page"""

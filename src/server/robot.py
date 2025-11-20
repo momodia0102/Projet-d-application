@@ -91,7 +91,36 @@ class Robot(object):
         self.qdot = [var('QP{0}'.format(i)) for i in numj]
         """  joint acceleration: list of var"""
         self.qddot = [var('QDP{0}'.format(i)) for i in numj]
-       
+
+        self.GAM = [0 for i in range(self.NJ)]
+        self.eta = [0 for i in range(self.NF + 1)] 
+        self.k = [0 for i in range(self.NF + 1)]
+
+
+        """  Couples/Forces des joints (GAM)"""
+        self.GAM = [0 for i in range(self.NF + 1)]
+        
+        """  Paramètre de transmission/ressort (eta)"""
+        self.eta = [0 for i in range(self.NF + 1)]
+        
+        """  Constante de raideur (k)"""
+        self.k = [0 for i in range(self.NF + 1)]
+        
+        """  Friction Sèche (FS)"""
+        self.FS = [0 for i in range(self.NF + 1)]
+        
+        """  Friction Visqueuse (FV)"""
+        self.FV = [0 for i in range(self.NF + 1)]
+
+        # --- Forces et Moments Externes (Matrice 3x1 par frame) ---
+        """  Forces externes (Fex) : 3x1 Matrix pour chaque frame"""
+        self.Fex = [zeros(3, 1) for i in range(self.NF + 1)] 
+        
+        """  Moments externes (Nex) : 3x1 Matrix pour chaque frame"""
+        self.Nex = [zeros(3, 1) for i in range(self.NF + 1)]
+        
+        """  Inertie de l'actuateur (IA)"""
+        self.IA = [0 for i in range(self.NF + 1)]
        
     def set_par_file_path(self, path=None):
         if path is None or not os.path.isabs(path):
@@ -596,3 +625,58 @@ class Robot(object):
                 self.Z[j, 3] = var('Zt{0}'.format(j+1))
 
 
+    def get_inert_param(self, j):
+        """Returns 10-vector of inertia paremeters of link j.
+
+        Parameters
+        ==========
+        j: int
+            Link index.
+
+        Returns
+        =======
+        get_dynam_param: Matrix 10x1
+        """
+        K = [self.J[j][0], self.J[j][1], self.J[j][2], self.J[j][4],
+             self.J[j][5], self.J[j][8], self.MS[j][0], self.MS[j][1],
+             self.MS[j][2], self.M[j]]
+        return Matrix(K)
+
+    def put_inert_param(self, K, j):
+        """Write the inertia parameters of link j from 10-vector K.
+
+        Parameters
+        ==========
+        K: Matrix 10x1
+            Vector of inertia parameters
+        j: int
+            Link index.
+        """
+        self.J[j] = Matrix([[K[0], K[1], K[2]],
+                            [K[1], K[3], K[4]],
+                            [K[2], K[4], K[5]]])
+        self.MS[j] = Matrix(3, 1, K[6:9])
+        self.M[j] = K[9]
+
+    def get_ext_dynam_head(self):
+        """Returns header for external forces and torques,
+        friction parameters and joint speeds, accelerations.
+        Used for output generation.
+
+        Returns
+        =======
+        get_ext_dynam_head: list of strings
+        """
+        return ['j', 'FX', 'FY', 'FZ', 'CX', 'CY', 'CZ',
+                'FS', 'FV', 'QP', 'QDP', 'GAM', 'eta', 'k']
+
+    def get_dynam_head(self):
+        """Returns header for inertia parameters.
+        Used for output generation.
+
+        Returns
+        =======
+        get_dynam_head: list of strings
+        """
+        return ['j', 'XX', 'XY', 'XZ', 'YY', 'YZ', 'ZZ',
+                'MX', 'MY', 'MZ', 'M', 'IA']
