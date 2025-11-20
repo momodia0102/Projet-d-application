@@ -4,7 +4,15 @@ Version améliorée - Design Centrale Nantes
 """
 import tkinter as tk
 from tkinter import ttk, messagebox, font as tkfont
+from Interface.geometry import DialogDefinition
+from server.robot import Robot
+from server import geometry
+from outils import filemgr, parfile, tools
 
+import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 # Palette de couleurs Centrale Nantes
 COLORS = {
@@ -93,7 +101,121 @@ class MainWindow:
         self.create_header()
         self.create_main_layout()
         self.create_footer()
+
+        self.robo = None
+        self.init_example_robot()
+        self.mgd_text_widget = None
+
+    def init_example_robot(self):
+        """Initialiser ou charger un robot par défaut """
+        try:
+            from outils import configfile
+            par_file_path = configfile.get_last_robot()
+
+            if par_file_path and os.path.exists(par_file_path):
+                robo_name = os.path.split(par_file_path)[1][:4]
+                self.robo, flag = parfile.readpar(robo_name, par_file_path)
+                if self.robo is None:
+                    self.create_default_robot()
+                else:
+                    self.create_default_robot()
+
+        except Exception as e:
+            print(f"Erreur lors du chargement du robot: {e}")
+            self.create_default_robot()
+
+    def create_default_robot(self):
+        """Créer un robot par défaut"""
+        try:
+            from outils import samplerobots
+            self.robo = samplerobots.rx90()
+            self.robo.set_defaults(base=True, jpint = True ,geom=True)
+        except Exception as e:
+            print(f'Erreur création robot par défaut :{e}')
+            self.robo = Robot( nama ="MonRobot", NL=6, NJ=6, NF=6, structure="Série")
+            self.robo.set_defaults(base=True, joint=True,geom=True)
+    
+    def update_robo_from_dh(self):
+        """Mettre à jour le robot avec les paramètres DH saisis"""
+        if not self.robo or not self.dh_entries:
+            return
         
+        try:
+            for i, joint in enumerate(self.dh_entries, 1):
+                frame_idx =1
+                theta = float(joint['theta'].get())
+                d_val = float(joint['d'].get())
+                a_val = float(joint['a'].get())
+                alpha = float(joint['alpha'].get())
+                joint_type = joint['type'].get()
+
+                self.robo.put_val(frame_idx, 'theta', theta)
+                self.robo.put_val(frame_idx, 'd',d_val)
+                self.robo.put_val(frame_idx, 'a', a_val)
+                self.robo.put_val(frame_idx, 'alpha', alpha)
+
+                sigma = 0 if 'R' in joint_type else 1
+                self.robo.put_val(frame_idx, 'sigma', sigma)
+
+            print("✅ Paramètres DH synchronisés avec le robot ")
+        except Exception as e:
+                    print(f"❌ Erreur synchronisation DH: {e}")
+                    messagebox.showerror("Erreur", f"Erreur lors de la synchronisation des paramètres: {e}")
+
+    def calculate_mgd(self):
+        """Calculer le modèle Géométrique Direct"""
+        try:
+            self.update_robo_from_dh()
+
+            if not self.robo:
+                messagebox.showerror("Erreur", "Aucun robot chargé")
+                return
+            
+            nf = self.robo.NF
+            frames = [(0, nf-1)]
+            trig_subs = True
+
+            model = geometry.direct_geometric(self.robo, frames, trig_subs)
+
+            output_file = model.file_out.name
+            result_text = self.read_output(output_file)
+
+            self.display_mgd_result(result_text)
+
+            messagebox.showinfo("Succès", f"✅ MGD calculé avec succès!\n\nRésultats sauvegardés dans:\n{output_file}")
+
+        except Exception as e :
+             print(f"❌ Erreur calcul MGD: {e}")
+             messagebox.showerror("Erreur", f"Erreur lors du calcul MGD: {e}")
+
+    def read_output(self, file_path):
+        """Lire le contenu du fichier de Sortie"""
+        try:
+            with open(file_path, 'r' , encoding='utf-8')as f :
+                content = f.read()
+            return content
+        except Exception as e:
+            return  f"❌ Erreur lecture fichier: {e}\n\nChemin: {file_path}"
+
+    def display_mgd_result(self, result_text):
+            """Afficher le résultat MGD dans l'onglet correspondant"""
+            
+            text_widget = self.mgd_text_widget # <--- Utiliser le widget stocké
+            
+            if text_widget:
+                text_widget.configure(state = 'normal')
+                text_widget.delete('1.0', tk.END)
+                text_widget.insert('1.0',"📐 RÉSULTATS DU MODÈLE GÉOMÉTRIQUE DIRECT\n\n" )
+                text_widget.insert(tk.END, "="*60 + "\n\n")
+                text_widget.insert(tk.END, result_text)
+                text_widget.configure(state='disabled')
+                # Plus besoin de 'return', la fonction est terminée
+            else:
+                print("❌ Erreur d'affichage: Widget MGD non trouvé.")
+                                
+
+
+
     def setup_window(self):
         """Configuration de la fenêtre principale"""
         self.root.title("Robot Modeler 🤖 - Centrale Nantes")
@@ -463,7 +585,7 @@ class MainWindow:
                 
         widget.bind('<Enter>', show_tooltip)
         widget.bind('<Leave>', hide_tooltip)
-        
+  
     def validate_dh_params(self):
         """Valide et récupère les paramètres DH saisis"""
         try:
@@ -477,7 +599,8 @@ class MainWindow:
                     'type': 'R' if 'R' in joint['type'].get() else 'P'
                 }
                 params.append(param)
-            
+            self.update_dh_table()
+
             # Message de succès stylisé
             success_msg = f"✅ Paramètres validés avec succès !\n\n"
             success_msg += f"🤖 Robot à {len(params)} articulation(s)\n\n"
@@ -582,7 +705,7 @@ class MainWindow:
         # Onglet MGD
         mgd_frame = tk.Frame(notebook, bg=COLORS['bg_white'])
         notebook.add(mgd_frame, text="📐 MGD")
-        self.create_result_tab(mgd_frame, "Modèle Géométrique Direct",
+        self.mgd_text_widget = self.create_result_tab(mgd_frame, "Modèle Géométrique Direct",
                               "Calcule la position de l'effecteur à partir des angles articulaires")
         
         # Onglet MGI
@@ -651,6 +774,8 @@ class MainWindow:
         
         text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        return text
         
     def create_footer(self):
         """Crée le pied de page"""
@@ -667,17 +792,77 @@ class MainWindow:
                               fg=COLORS['text_light'])
         footer_text.pack(expand=True)
         
-    # === Méthodes du menu ===
     def new_robot(self):
-        """Créer un nouveau robot"""
-        response = messagebox.askyesno("Nouveau robot",
-            "🤖 Créer un nouveau robot ?\n\n"
-            "Cela réinitialisera tous les paramètres actuels.")
-        if response:
-            self.joint_count.set(3)
-            self.update_dh_table()
-            messagebox.showinfo("Succès", "✅ Nouveau robot créé !")
+        """Créer un nouveau robot avec formulaire détaillé"""
+        # Ouvrir le dialog de création de robot
+        current_name = self.robo.name if self.robo else "MonRobot"
+        current_nl = self.robo.NL if self.robo else 6
+        current_nj = self.robo.NJ if self.robo else 6
+        current_structure = self.robo.structure if self.robo else "Série"
+        current_floating = self.robo.is_floating if self.robo else False
+        current_mobile = self.robo.is_mobile if self.robo else False
         
+        dialog = DialogDefinition(
+            self.root, 
+            current_name=current_name,
+            current_nl=current_nl,
+            current_nj=current_nj,
+            current_structure=current_structure,
+            current_floating=current_floating,
+            current_mobile=current_mobile
+        )
+        
+        # Attendre la fermeture du dialog
+        self.root.wait_window(dialog)
+        
+        # Récupérer les résultats
+        result = dialog.get_values()
+        
+        if result:
+            try:
+                # Créer le nouveau robot SYMORO
+                new_robo = Robot(
+                    name=result['name'],
+                    NL=result['num_links'],
+                    NJ=result['num_joints'],
+                    NF=result['num_frames'],
+                    structure=result['structure'],
+                    is_floating=result['is_floating'],
+                    is_mobile=result['is_mobile']
+                )
+                
+                # Appliquer les paramètres par défaut
+                new_robo.set_defaults(base=True, joint=True, geom=True)
+                
+                # Copier les paramètres existants si demandé
+                if self.robo and result['keep_geo']:
+                    nf = min(self.robo.NF, new_robo.NF)
+                    # Copier les paramètres géométriques...
+                    pass
+                    
+                self.robo = new_robo
+                self.robo.directory = filemgr.get_folder_path(self.robo.name)
+                
+                # Mettre à jour l'interface
+                self.joint_count.set(result['num_joints'])
+                self.update_dh_table()
+                
+                # Message de succès
+                success_msg = f"🤖 NOUVEAU ROBOT CRÉÉ AVEC SUCCÈS !\n\n"
+                success_msg += f"📝 Nom: {result['name']}\n"
+                success_msg += f"🔗 Liens: {result['num_links']}\n"
+                success_msg += f"🔄 Joints: {result['num_joints']}\n"
+                success_msg += f"📐 Frames: {result['num_frames']}\n"
+                success_msg += f"🏗️ Structure: {result['structure']}\n"
+                success_msg += f"🌊 Base flottante: {'Oui' if result['is_floating'] else 'Non'}\n"
+                success_msg += f"🚗 Robot mobile: {'Oui' if result['is_mobile'] else 'Non'}\n\n"
+                success_msg += "✅ Le robot a été configuré avec SYMORO."
+                
+                messagebox.showinfo("Succès", success_msg)
+                
+            except Exception as e:
+                messagebox.showerror("Erreur", f"Erreur lors de la création du robot: {e}")
+
     def load_robot(self):
         """Charger un robot"""
         messagebox.showinfo("Charger un robot",
@@ -693,12 +878,8 @@ class MainWindow:
             "configuration de robot.")
         
     def calc_mgd(self):
-        """Calculer MGD"""
-        messagebox.showinfo("MGD",
-            "📐 Modèle Géométrique Direct\n\n"
-            "Calcul de la position et orientation de l'effecteur\n"
-            "à partir des coordonnées articulaires.\n\n"
-            "Résultats disponibles dans l'onglet MGD.")
+        """Calculer MGD """
+        self.calculate_mgd()
         
     def calc_mgi(self):
         """Calculer MGI"""
