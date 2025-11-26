@@ -104,7 +104,7 @@ class MainWindow:
 
         self.robo = None
         self.init_example_robot()
-        self.mgd_text_widget = None
+        
 
     def init_example_robot(self):
         """Initialiser ou charger un robot par défaut """
@@ -198,21 +198,25 @@ class MainWindow:
             return  f"❌ Erreur lecture fichier: {e}\n\nChemin: {file_path}"
 
     def display_mgd_result(self, result_text):
-            """Afficher le résultat MGD dans l'onglet correspondant"""
-            
-            text_widget = self.mgd_text_widget # <--- Utiliser le widget stocké
-            
-            if text_widget:
-                text_widget.configure(state = 'normal')
-                text_widget.delete('1.0', tk.END)
-                text_widget.insert('1.0',"📐 RÉSULTATS DU MODÈLE GÉOMÉTRIQUE DIRECT\n\n" )
-                text_widget.insert(tk.END, "="*60 + "\n\n")
-                text_widget.insert(tk.END, result_text)
-                text_widget.configure(state='disabled')
-                # Plus besoin de 'return', la fonction est terminée
-            else:
-                print("❌ Erreur d'affichage: Widget MGD non trouvé.")
-                                
+        """Afficher le résultat MGD dans l'onglet correspondant"""
+        
+        if not hasattr(self, 'mgd_text_widget') or self.mgd_text_widget is None:
+            print("❌ Erreur: Widget MGD non initialisé")
+            messagebox.showerror("Erreur", "L'interface n'est pas correctement initialisée")
+            return
+        
+        try:
+            self.mgd_text_widget.configure(state='normal')
+            self.mgd_text_widget.delete('1.0', tk.END)
+            self.mgd_text_widget.insert('1.0', "🔍 RÉSULTATS DU MODÈLE GÉOMÉTRIQUE DIRECT\n\n")
+            self.mgd_text_widget.insert(tk.END, "="*60 + "\n\n")
+            self.mgd_text_widget.insert(tk.END, result_text)
+            self.mgd_text_widget.configure(state='disabled')
+            print("✅ Résultats MGD affichés avec succès")
+        except Exception as e:
+            print(f"❌ Erreur lors de l'affichage: {e}")
+            messagebox.showerror("Erreur", f"Impossible d'afficher les résultats: {e}")
+                                    
 
 
 
@@ -711,19 +715,19 @@ class MainWindow:
         # Onglet MGI
         mgi_frame = tk.Frame(notebook, bg=COLORS['bg_white'])
         notebook.add(mgi_frame, text="🔄 MGI")
-        self.create_result_tab(mgi_frame, "Modèle Géométrique Inverse",
+        self.mgi_text_widget =self.create_result_tab(mgi_frame, "Modèle Géométrique Inverse",
                               "Calcule les angles articulaires pour atteindre une position donnée")
         
         # Onglet Cinématique Directe
         mcd_frame = tk.Frame(notebook, bg=COLORS['bg_white'])
         notebook.add(mcd_frame, text="⚡ MCD")
-        self.create_result_tab(mcd_frame, "Modèle Cinématique Direct",
+        self.mcd_text_widget = self.create_result_tab(mcd_frame, "Modèle Cinématique Direct",
                               "Calcule la vitesse de l'effecteur à partir des vitesses articulaires")
         
         # Onglet Cinématique Inverse
         mci_frame = tk.Frame(notebook, bg=COLORS['bg_white'])
         notebook.add(mci_frame, text="🎯 MCI")
-        self.create_result_tab(mci_frame, "Modèle Cinématique Inverse",
+        self.mci_text_widget = self.create_result_tab(mci_frame, "Modèle Cinématique Inverse",
                               "Calcule les vitesses articulaires pour une vitesse d'effecteur donnée")
         
     def create_result_tab(self, parent, title, description):
@@ -774,6 +778,7 @@ class MainWindow:
         
         text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        print(text)
 
         return text
         
