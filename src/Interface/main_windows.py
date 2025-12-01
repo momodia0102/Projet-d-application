@@ -12,7 +12,7 @@ from Interface.style import COLORS, ModernButton
 
 from Interface.mixins.parametre_mixin import ParameterMixin
 from Interface.mixins.resultat_mixin import ResultMixin
-from Interface.mixins.visualisation_mixin import VisualizationMixin
+from Interface.mixins.visualization_mixin import VisualizationMixin
 
 import os
 import sys
@@ -35,7 +35,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
 
         self.robo = None
         self.sidebar_visible = False
-        self.sidebar_frame = None
         self.init_example_robot()
         
 
@@ -69,6 +68,8 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             self.robo.set_defaults(base=True, joint=True,geom=True)
     
     
+# main_windows.py: MainWindow.calculate_mgd
+
     def calculate_mgd(self):
         """Calculer le modèle Géométrique Direct"""
         try:
@@ -80,19 +81,31 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             
             nf = self.robo.NF
             frames = [(0, nf-1)]
-            trig_subs = True
+            trig_subs = True # Maintenir True pour obtenir les substitutions symboliques
 
-            model = geometry.direct_geometric(self.robo, frames, trig_subs)
+            # 1. Calculer le MGD avec SYMORO
+            symo = geometry.direct_geometric(self.robo, frames, trig_subs)
 
-            output_file = model.file_out.name
+            # 2. Lire et afficher les résultats textuels
+            output_file = symo.file_out.name
             result_text = self.read_output(output_file)
-
             self.display_mgd_result(result_text)
 
-            messagebox.showinfo("Succès", f"✅ MGD calculé avec succès!\n\nRésultats sauvegardés dans:\n{output_file}")
+            # 🎯 3. VISUALISATION : Mettre à jour les contrôles articulaires et la vue 3D
+            
+            # Initialiser les contrôles articulaires (sliders) pour le robot chargé
+            self.update_joint_controls()
+            
+            # Afficher la vue 3D en configuration repos (tous angles à 0)
+            self.update_robot_visualization_from_mgd(symo, self.robo)
+
+            messagebox.showinfo("Succès", f"✅ MGD calculé et visualisé !\n\nRésultats sauvegardés dans:\n{output_file}")
 
         except Exception as e :
              print(f"❌ Erreur calcul MGD: {e}")
+             # Afficher la traceback complète en console pour le débogage
+             import traceback
+             traceback.print_exc() 
              messagebox.showerror("Erreur", f"Erreur lors du calcul MGD: {e}")
 
     def read_output(self, file_path):
@@ -290,6 +303,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         
         # Section DH compacte
         self.create_dh_parameters_section(sidebar_content)
+        self.create_joint_control_section(sidebar_content)
         
         # === ZONE CENTRALE (toujours visible) ===
         center_container = tk.Frame(main_container, bg=COLORS['bg_light'])
