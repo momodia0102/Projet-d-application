@@ -108,6 +108,46 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
              traceback.print_exc() 
              messagebox.showerror("Erreur", f"Erreur lors du calcul MGD: {e}")
 
+    def calculate_mcd(self):
+        """Calcul du Modèle Cinématique Direct"""
+
+        try:
+            # Mettre à jour le robot à partir du DH Editor
+            self.update_robo_from_dh()
+
+            if not self.robo:
+                messagebox.showerror("Erreur", "Aucun robot chargé.")
+                return
+
+            # Vitesses articulaires (ici mises à 0 si tu n'as pas de sliders)
+            qdot = []
+            for j in range(1, self.robo.NJ):
+                qdot.append(0.0)
+
+            # Calcul MCD
+            from server.geometry import direct_kinematic
+            J, twist = direct_kinematic(self.robo, qdot)
+
+            # Format du display
+            result_text = (
+                "⚡ MODÈLE CINÉMATIQUE DIRECT\n\n"
+                f"Jacobien J(q):\n{J}\n\n"
+                f"Twist (vitesse effecteur):\n{twist}\n"
+            )
+
+            # Affichage dans l'onglet MCD
+            self.display_mcd_result(result_text)
+
+            messagebox.showinfo(
+                "Succès",
+                "MCD calculé avec succès.\nConsultez l'onglet MCD."
+            )
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Erreur", f"Erreur MCD : {e}")
+
     def read_output(self, file_path):
         """Lire le contenu du fichier de Sortie"""
         try:
@@ -550,11 +590,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         
     def calc_mcd(self):
         """Calculer MCD"""
-        messagebox.showinfo("MCD",
-            "⚡ Modèle Cinématique Direct\n\n"
-            "Calcul de la vitesse de l'effecteur\n"
-            "à partir des vitesses articulaires.\n\n"
-            "Résultats disponibles dans l'onglet MCD.")
+        self.calculate_mcd()
         
     def calc_mci(self):
         """Calculer MCI"""

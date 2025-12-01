@@ -680,3 +680,7 @@ class Robot(object):
         """
         return ['j', 'XX', 'XY', 'XZ', 'YY', 'YZ', 'ZZ',
                 'MX', 'MY', 'MZ', 'M', 'IA']
+    
+    def mcd(self, qdot, ee_frame=None):
+        from server.geometry import direct_kinematic
+        return direct_kinematic(self, qdot, ee_frame)

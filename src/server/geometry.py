@@ -16,7 +16,7 @@ from copy import copy
 from outils import symbolmgr
 from outils import tools
 from outils.paramsinit import ParamsInit
-
+from outils import symbolmgr
 
 Z_AXIS = Matrix([0, 0, 1])
 
@@ -534,10 +534,81 @@ def direct_geometric(robo, frames, trig_subs):
     symo.write_params_table(robo, 'Direct Geometric model')
     for i, j in frames:
         symo.write_line('Tramsformation matrix %s T %s' % (i, j))
-        T = dgm(robo, symo, i, j, fast_form=False, trig_subs=trig_subs)
+        T = dgm(robo, symo, i, j)
         symo.mat_replace(T, 'T%sT%s' % (i, j), forced=True, skip=1)
         symo.write_line()
     symo.file_close()
     return symo
+def compute_geometric_jacobian(robo, ee_frame=None):
+    """Calcule le Jacobien géométrique 6x(NJ-1)."""
+
+    # Effecteur = dernier frame si non spécifié
+    if ee_frame is None:
+        ee_frame = robo.NF - 1
+
+    # Calcul FK pour chaque frame via DGM SYMORO
+    symo = symbolmgr.SymbolManager()
+    T0i = {}
+
+    for i in range(robo.NF):
+        T0i[i] = dgm(robo, symo, i, 0, fast_form=True)
+
+    # Extraction des origines et axes z
+    o = {}
+    z = {}
+
+    for i in range(robo.NF):
+        T = T0i[i]
+        o[i] = Transform.P(T)
+        R = Transform.R(T)
+        z[i] = R[:, 2]   # axe z_i
+
+    o_n = o[ee_frame]
+
+    # Jacobien 6x(NJ-1)
+    n_joints = robo.NJ - 1
+    J = zeros(6, n_joints)
+
+    # Contribution de chaque articulation
+    for i in range(1, n_joints + 1):
+        parent = robo.ant[i]
+        z_im1 = z[parent]
+        o_im1 = o[parent]
+
+        # Rotationnel
+        if int(robo.sigma[i]) == 0:
+            Jv = z_im1.cross(o_n - o_im1)
+            Jw = z_im1
+        # Prismatique
+        else:
+            Jv = z_im1
+            Jw = Matrix([0, 0, 0])
+
+        J[:3, i - 1] = Jv
+        J[3:, i - 1] = Jw
+
+    return J
+
+def direct_kinematic(robo, qdot, ee_frame=None):
+    """
+    Modèle Cinématique Direct : twist = J(q) * qdot
+    Retourne : (Jacobien, Twist)
+    """
+    if ee_frame is None:
+        ee_frame = robo.NF - 1
+
+    # Jacobien
+    J = compute_geometric_jacobian(robo, ee_frame)
+
+    # Convertir qdot en vecteur sympy
+    if not isinstance(qdot, Matrix):
+        qdot = Matrix(qdot)
+
+    twist = J * qdot   # vitesse linéaire + angulaire
+
+    return J, twist
+
+
+
 
 
