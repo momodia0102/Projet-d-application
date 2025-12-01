@@ -15,7 +15,8 @@ COLORS = {
     'text_light': '#FFFFFF',   # Texte clair
     'success': '#28A745',      # Vert succès
     'warning': '#FFC107',      # Orange avertissement
-    'border': '#D1D9E6'        # Bordure grise
+    'border': '#D1D9E6' ,       # Bordure grise
+    'error': '#DC3545'         # Rouge erreur
 }
 
 
