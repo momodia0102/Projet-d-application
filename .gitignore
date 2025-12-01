@@ -1,0 +1,34 @@
+# --- ENVIRONNEMENT PYTHON ---
+venv/
+.env/
+*.env
+*.venv/
+
+# --- CACHE PYTHON ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- COMPILATION ---
+*.so
+*.dll
+
+# --- PACKAGES ---
+*.egg
+*.egg-info/
+dist/
+build/
+
+# --- LOGS ---
+*.log
+
+# --- VSCODE / PYCHARM / IDE ---
+.vscode/
+.idea/
+
+# --- SYSTEM FILES ---
+.DS_Store
+Thumbs.db
+
+# --- SPECIFIQUE A TON PROJET ---
+# Mets ici d'autres dossiers que tu ne veux pas suivre
