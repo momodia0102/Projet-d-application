@@ -160,7 +160,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
     def display_mgd_result(self, result_text):
         """Affiche le résultat MGD"""
         formatted_result = (
-            "🔍 RÉSULTATS DU MODÈLE GÉOMÉTRIQUE DIRECT\n\n"
+            "🔍 Les  RÉSULTATS DU MODÈLE GÉOMÉTRIQUE DIRECT\n\n"
             f"{'='*60}\n\n"
             f"{result_text}"
         )
