@@ -586,7 +586,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             "🔄 Modèle Géométrique Inverse\n\n"
             "Calcul des coordonnées articulaires nécessaires\n"
             "pour atteindre une position donnée.\n\n"
-            "Résultats disponibles dans l'onglet MGI.")
+            "Résultats disponibles dans l'onglet MGI(voir menu).")
         
     def calc_mcd(self):
         """Calculer MCD"""
