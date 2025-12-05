@@ -1,6 +1,7 @@
-# __init__.py
+# visualization/__init__.py (VERSION OPENGL)
+
 from .symoro_bridge import SYMOROBridge
 from .dh_visualizer import DHVisualizer
-from .robot_3d_renderer import Robot3DRenderer
+from .robot_opengl_renderer import RobotOpenGLRenderer  # ⬅️ NOUVEAU
 
-__all__ = ['SYMOROBridge', 'DHVisualizer', 'Robot3DRenderer']
+__all__ = ['SYMOROBridge', 'DHVisualizer', 'RobotOpenGLRenderer']
