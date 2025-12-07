@@ -9,10 +9,10 @@ from ..visualization.symoro_bridge import SYMOROBridge
 
 
 class VisualizationMixin(BaseMixin):
-    """Mixin pour la visualisation 3D du robot - Version OpenGL"""
+    """Mixin pour la visualisation 3D du robot """
     
     def create_visualization_section(self, parent):
-        """Section de visualisation 3D avec OpenGL."""
+        """Section de visualisation 3D du robot."""
         
         # Info card
         self.create_info_card(
@@ -80,7 +80,7 @@ class VisualizationMixin(BaseMixin):
         symo : SymbolManager
             Résultat du calcul MGD
         robot : Robot
-            Instance du robot SYMORO
+            Instance du robot 
         joint_angles_deg : dict, optional
             Configuration articulaire {nom_variable: valeur_degrés}
         """
