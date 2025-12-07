@@ -77,6 +77,12 @@ class Robot(object):
         self.b = [0 for i in range(NF + 1)]
         """ transformation from reference frame to zero frame"""
         self.Z = eye(4)
+        # Gravity vector (default to zero vector). Initialized here so
+        # code can safely access `robot.G` even when robot is not floating.
+        self.G = zeros(3, 1)
+        self.J = [zeros(3, 3) for _ in range(self.NF + 1)]   
+        self.MS = [zeros(3, 1) for _ in range(self.NF + 1)]
+        self.M = [0 for _ in range(self.NF + 1)]   
         num = range(self.NL)
         numj = range(self.NJ)
         """  base angular velocity: 3x1 matrix"""

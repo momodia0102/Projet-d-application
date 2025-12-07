@@ -61,14 +61,12 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         try:
             from outils import samplerobots
             self.robo = samplerobots.rx90()
-            self.robo.set_defaults(base=True, jpint = True ,geom=True)
+            self.robo.set_defaults(base=True, joint = True ,geom=True)
         except Exception as e:
             print(f'Erreur création robot par défaut :{e}')
-            self.robo = Robot( nama ="MonRobot", NL=6, NJ=6, NF=6, structure="Série")
+            self.robo = Robot( name ="MonRobot", NL=6, NJ=6, NF=6, structure="Série")
             self.robo.set_defaults(base=True, joint=True,geom=True)
     
-    
-# main_windows.py: MainWindow.calculate_mgd
 
     def calculate_mgd(self):
         """Calculer le modèle Géométrique Direct"""
@@ -81,72 +79,35 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             
             nf = self.robo.NF
             frames = [(0, nf-1)]
-            trig_subs = True # Maintenir True pour obtenir les substitutions symboliques
+            trig_subs = True
 
-            # 1. Calculer le MGD avec SYMORO
+            # 1. Calculer le MGD (Pour affichage textuel)
             symo = geometry.direct_geometric(self.robo, frames, trig_subs)
 
-            # 2. Lire et afficher les résultats textuels
+            # 2. Afficher les résultats
             output_file = symo.file_out.name
             result_text = self.read_output(output_file)
+            
+            # 🆕 Utiliser la méthode du mixin ResultMixin
             self.display_mgd_result(result_text)
 
-            # 🎯 3. VISUALISATION : Mettre à jour les contrôles articulaires et la vue 3D
-            
-            # Initialiser les contrôles articulaires (sliders) pour le robot chargé
-            self.update_joint_controls()
-            
-            # Afficher la vue 3D en configuration repos (tous angles à 0)
-            self.update_robot_visualization_from_mgd(symo, self.robo)
+            # 🎯 3. VISUALISATION (Approche Directe SYMORO)
+            if hasattr(self, 'renderer_3d') and self.renderer_3d:
+                # A. Charger la hiérarchie du robot
+                self.renderer_3d.load_robot(self.robo)
+                
+                # B. Initialiser les contrôles (Sliders)
+                self.update_joint_controls()
+            else:
+                print("⚠️ Renderer 3D non disponible")
 
-            messagebox.showinfo("Succès", f"✅ MGD calculé et visualisé !\n\nRésultats sauvegardés dans:\n{output_file}")
-
-        except Exception as e :
-             print(f"❌ Erreur calcul MGD: {e}")
-             # Afficher la traceback complète en console pour le débogage
-             import traceback
-             traceback.print_exc() 
-             messagebox.showerror("Erreur", f"Erreur lors du calcul MGD: {e}")
-
-    def calculate_mcd(self):
-        """Calcul du Modèle Cinématique Direct"""
-
-        try:
-            # Mettre à jour le robot à partir du DH Editor
-            self.update_robo_from_dh()
-
-            if not self.robo:
-                messagebox.showerror("Erreur", "Aucun robot chargé.")
-                return
-
-            # Vitesses articulaires (ici mises à 0 si tu n'as pas de sliders)
-            qdot = []
-            for j in range(1, self.robo.NJ):
-                qdot.append(0.0)
-
-            # Calcul MCD
-            from server.geometry import direct_kinematic
-            J, twist = direct_kinematic(self.robo, qdot)
-
-            # Format du display
-            result_text = (
-                "⚡ MODÈLE CINÉMATIQUE DIRECT\n\n"
-                f"Jacobien J(q):\n{J}\n\n"
-                f"Twist (vitesse effecteur):\n{twist}\n"
-            )
-
-            # Affichage dans l'onglet MCD
-            self.display_mcd_result(result_text)
-
-            messagebox.showinfo(
-                "Succès",
-                "MCD calculé avec succès.\nConsultez l'onglet MCD."
-            )
+            messagebox.showinfo("Succès", f"✅ MGD calculé et robot visualisé !")
 
         except Exception as e:
+            print(f"❌ Erreur calcul MGD: {e}")
             import traceback
-            traceback.print_exc()
-            messagebox.showerror("Erreur", f"Erreur MCD : {e}")
+            traceback.print_exc() 
+            messagebox.showerror("Erreur", f"Erreur lors du calcul MGD: {e}")
 
     def read_output(self, file_path):
         """Lire le contenu du fichier de Sortie"""
@@ -534,10 +495,10 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
                 new_robo.set_defaults(base=True, joint=True, geom=True)
                 
                 # Copier les paramètres existants si demandé
-                if self.robo and result['keep_geo']:
-                    nf = min(self.robo.NF, new_robo.NF)
+                #if self.robo and result['keep_geo']:
+                    #nf = min(self.robo.NF, new_robo.NF)
                     # Copier les paramètres géométriques...
-                    pass
+                    #pass
                     
                 self.robo = new_robo
                 self.robo.directory = filemgr.get_folder_path(self.robo.name)
