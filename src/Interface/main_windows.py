@@ -220,6 +220,8 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         menu.add_command(label="📂 Charger un robot", command=self.load_robot)
         menu.add_command(label="💾 Sauvegarder", command=self.save_robot)
         menu.add_separator()
+        menu.add_command(label="🐍 Exporter MGD en Python", command=self.export_mgd_python)
+        menu.add_separator()
         menu.add_command(label="📐 Modèle Géométrique Direct", command=self.calc_mgd)
         menu.add_command(label="🔄 Modèle Géométrique Inverse", command=self.calc_mgi)
         menu.add_command(label="⚡ Modèle Cinématique Direct", command=self.calc_mcd)
@@ -648,6 +650,116 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             "pour obtenir une vitesse d'effecteur donnée.\n\n"
             "Résultats disponibles dans l'onglet MCI.")
         
+# Ajoutez ceci dans src/Interface/main_windows.py (dans la classe MainWindow)
+
+    def export_mgd_python(self):
+            """Génère et télécharge un script Python autonome du MGD (Version Corrigée)"""
+            from tkinter import filedialog
+            from server import geometry
+            from outils import symbolmgr
+            import datetime
+            import textwrap  # Pour nettoyer l'indentation
+
+            if not self.robo:
+                messagebox.showerror("Erreur", "Veuillez d'abord charger ou créer un robot.")
+                return
+
+            # 1. Demander où sauvegarder le fichier
+            default_name = f"mgd_{self.robo.name}.py"
+            file_path = filedialog.asksaveasfilename(
+                title="💾 Exporter le MGD en Python",
+                initialfile=default_name,
+                defaultextension=".py",
+                filetypes=[("Fichier Python", "*.py")]
+            )
+
+            if not file_path:
+                return
+
+            try:
+                # 2. Initialiser le gestionnaire symbolique
+                symo = symbolmgr.SymbolManager(file_out=None)
+                
+                # 3. Calculer la Matrice de Transformation (0 -> Effecteur)
+                T = geometry.dgm(self.robo, symo, self.robo.NF-1, 0, fast_form=True)
+                
+                # 4. Identifier les variables articulaires (q)
+                q_vars = self.robo.q_vec 
+
+                # 5. Générer le corps de la fonction Python via SYMORO
+                # Cette fonction génère tout : "def calcul_mgd(*args): ..."
+                func_body = symo.gen_func_string("calcul_mgd", T, q_vars, syntax='python')
+
+                # 6. Construire le contenu du fichier proprement
+                # On utilise dedent pour supprimer l'indentation du bloc de texte
+                header = textwrap.dedent(f'''\
+                    #!/usr/bin/env python3
+                    # -*- coding: utf-8 -*-
+                    """
+                    Script MGD généré automatiquement par Robot Modeler
+                    Robot: {self.robo.name}
+                    Date: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}
+
+                    Ce script permet de calculer la matrice de transformation homogène
+                    de la base vers l'effecteur.
+                    """
+
+                    import numpy as np
+                    # Les imports mathématiques sont inclus dans la fonction générée ci-dessous
+                    
+                    # --- CONSTANTES GEOMETRIQUES ---
+                    # Si SYMORO a trouvé des constantes inconnues, il les a initialisées à 1.0
+                    # dans la fonction. Vérifiez les valeurs ci-dessous ou dans la fonction.
+                    ''')
+
+                main_block = textwrap.dedent(f'''\
+                    
+                    if __name__ == "__main__":
+                        # Test unitaire automatique
+                        print(f"🤖 Test du MGD pour le robot : {self.robo.name}")
+                        
+                        # Configuration zéro (tous les angles/déplacements à 0)
+                        # Le code généré attend une liste en argument
+                        q_zero = [0.0] * {len(q_vars)}
+                        
+                        print(f"\\nTest avec configuration q = {{q_zero}}")
+                        
+                        try:
+                            # Appel de la fonction générée
+                            # Note: La fonction générée par SYMORO attend *args, 
+                            # donc on passe la liste directement.
+                            T = calcul_mgd(q_zero)
+                            
+                            print("\\nMatrice de Transformation T (0 -> Effecteur) :")
+                            # On convertit en array numpy pour un affichage propre si possible
+                            print(np.array(T))
+                            
+                            print("\\n✅ Position de l'effecteur (x, y, z) :")
+                            print(np.array(T)[:3, 3])
+                            
+                        except Exception as e:
+                            print(f"❌ Erreur lors de l'exécution : {{e}}")
+                            import traceback
+                            traceback.print_exc()
+
+                        print("\\n💡 Astuce : Modifiez la liste 'q_zero' dans ce script pour tester d'autres positions !")
+                    ''')
+
+                # Assemblage final
+                full_content = header + "\n" + func_body + "\n" + main_block
+
+                # 7. Écriture du fichier
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(full_content)
+
+                messagebox.showinfo("Succès", f"✅ Script Python généré et formaté !\n\nEmplacement : {file_path}")
+
+            except Exception as e:
+                print(f"Erreur export: {e}")
+                import traceback
+                traceback.print_exc()
+                messagebox.showerror("Erreur Export", f"Impossible de générer le script :\n{e}")
+                    
     def show_help(self):
         """Afficher l'aide"""
         help_window = tk.Toplevel(self.root)

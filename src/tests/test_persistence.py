@@ -5,42 +5,33 @@ from outils import parfile, tools, samplerobots
 
 def test_sauvegarde_nominale(tmp_path):
     """Test N°12 : Vérifie qu'un fichier .par est bien créé sur le disque"""
-    # 1. Préparation : Création d'un dossier temporaire unique pour ce test
     dossier_temp = tmp_path / "test_robots"
     dossier_temp.mkdir()
     chemin_fichier = dossier_temp / "robot_test.par"
 
-    # 2. Création d'un robot en mémoire
     r = Robot('RobotTest', NL=6, NJ=6, NF=6, structure=tools.SIMPLE)
-    r.par_file_path = str(chemin_fichier) # On force le chemin
+    r.par_file_path = str(chemin_fichier) 
     
-    # 3. Action : Sauvegarde
     parfile.writepar(r)
 
-    # 4. Vérification
     assert chemin_fichier.exists(), "Le fichier .par n'a pas été créé !"
     assert chemin_fichier.stat().st_size > 0, "Le fichier est vide !"
 
 def test_cycle_complet_sauvegarde_chargement(tmp_path):
     """Test N°13 : Sauvegarde un robot, le recharge et compare les données"""
-    # Chemin temporaire
     chemin_fichier = tmp_path / "cycle_test.par"
     
-    # 1. Création robot original avec une valeur spécifique
     original = Robot('CycleBot', NL=3, NJ=3, NF=3, structure=tools.SIMPLE)
-    original.d[1] = 0.55  # On met une valeur précise pour vérifier qu'elle revient
+    original.d[1] = 0.55  
     original.par_file_path = str(chemin_fichier)
-    
-    # 2. Sauvegarde
+
     parfile.writepar(original)
     
-    # 3. Chargement (simulation de "Charger un robot")
-    # readpar renvoie (robot, flag)
+
     robot_charge, status = parfile.readpar('CycleBot', str(chemin_fichier))
     
-    # 4. Comparaisons
     assert status == tools.OK
     assert robot_charge is not None
     assert robot_charge.name == 'CycleBot'
     assert robot_charge.nl == 3
-    assert robot_charge.d[1] == 0.55  # La valeur doit être conservée
+    assert robot_charge.d[1] == 0.55 
