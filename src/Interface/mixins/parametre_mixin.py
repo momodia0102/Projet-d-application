@@ -207,8 +207,11 @@ class ParameterMixin(BaseMixin):
             if not self._validate_parameters(params):
                 return
             
- 
-            
+            # --- LOGIQUE D'AFFICHAGE DU SUCCÈS RÉINTÉGRÉE ---
+            success_msg = self._format_success_message(params)
+            self.show_success("Validation DH", success_msg)
+            # --- FIN LOGIQUE D'AFFICHAGE DU SUCCÈS RÉINTÉGRÉE ---
+
         except ValueError as e:
             self.show_error(
                 "Erreur de saisie",

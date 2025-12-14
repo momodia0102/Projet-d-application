@@ -123,6 +123,9 @@ class JointNode:
         # glEnd()
         # glEnable(GL_LIGHTING)
 
+        glColor4f(1.0, 1.0, 0.0, 1.0) # Jaune vif
+        self._draw_simple_cube_with_normals(1.0)
+
         if self.sigma == 0:  # Rotation
             # utiliser couleur RGBA
             glColor4f(*COLORS_ROBOT['revolute'])

@@ -261,7 +261,6 @@ class RobotOpenGLRenderer:
             )
             self.joint_nodes[child_idx] = child_node
 
-            print(f"[build_tree] created JointNode idx={child_idx} sigma={sigma} theta={theta} r={r} d={d}")
 
             self._build_tree_recursive(child_idx)
 
@@ -310,6 +309,7 @@ class RobotOpenGLRenderer:
 
     # Gestion des événements souris
     def _on_mouse_down(self, event):
+        print(f"[DEBUG MOUSE] DOWN: x={event.x}, y={event.y}")
         self.mouse_down = True
         self.last_mouse_x = event.x
         self.last_mouse_y = event.y
@@ -323,6 +323,7 @@ class RobotOpenGLRenderer:
         dx = event.x - self.last_mouse_x
         dy = event.y - self.last_mouse_y
         
+        print(f"[DEBUG MOUSE] DRAG: dx={dx}, dy={dy}. Elevation={self.camera_elevation:.1f}")
         self.last_mouse_x = event.x
         self.last_mouse_y = event.y
         
@@ -341,6 +342,7 @@ class RobotOpenGLRenderer:
 
     def _on_mouse_wheel(self, event):
         # Windows/MacOS
+        print(f"[DEBUG MOUSE] WHEEL: event.delta={getattr(event, 'delta', 'N/A')}")
         if hasattr(event, 'delta'):
             delta = event.delta
         # Linux

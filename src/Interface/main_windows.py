@@ -494,11 +494,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
                 # Appliquer les paramètres par défaut
                 new_robo.set_defaults(base=True, joint=True, geom=True)
                 
-                # Copier les paramètres existants si demandé
-                #if self.robo and result['keep_geo']:
-                    #nf = min(self.robo.NF, new_robo.NF)
-                    # Copier les paramètres géométriques...
-                    #pass
+        
                     
                 self.robo = new_robo
                 self.robo.directory = filemgr.get_folder_path(self.robo.name)

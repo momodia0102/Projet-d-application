@@ -14,7 +14,8 @@ class DialogDefinition(tk.Toplevel):
         self.result = None
         
         self.title("🤖 Nouveau Robot - SYMORO")
-        self.geometry("600x700")
+        # Rendu plus compact : Taille réduite
+        self.geometry("600x500") 
         self.resizable(False, False)
         self.configure(bg=COLORS['bg_light'])
         self.transient(parent)
@@ -49,7 +50,7 @@ class DialogDefinition(tk.Toplevel):
         
         # Header
         header_frame = tk.Frame(main_frame, bg=COLORS['primary'])
-        header_frame.pack(fill=tk.X, pady=(0, 20))
+        header_frame.pack(fill=tk.X, pady=(0, 10)) # PADY RÉDUIT
         
         title_label = tk.Label(header_frame,
                               text="🎯 CRÉATION D'UN NOUVEAU ROBOT",
@@ -60,11 +61,12 @@ class DialogDefinition(tk.Toplevel):
         title_label.pack()
         
         # Robot Information Section
+        # NOTE : Utiliser expand=True ici pour que ce frame absorbe l'espace et maintienne les boutons visibles.
         info_frame = ttk.LabelFrame(main_frame, 
                                    text="📝 Informations de Base",
                                    style='Modern.TLabelframe',
                                    padding=15)
-        info_frame.pack(fill=tk.X, pady=(0, 15))
+        info_frame.pack(fill=tk.X, expand=True, pady=(0, 10)) 
         
         # Robot Name
         name_frame = tk.Frame(info_frame, bg=COLORS['bg_white'])
@@ -85,19 +87,20 @@ class DialogDefinition(tk.Toplevel):
                              bd=1)
         name_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        # Structure Parameters
+        # Structure Parameters (NL is enough for serial robots)
         struct_frame = tk.Frame(info_frame, bg=COLORS['bg_white'])
         struct_frame.pack(fill=tk.X, pady=10)
         
-        # Number of Links
+        # Number of Links (NL) - Combined input label
         links_frame = tk.Frame(struct_frame, bg=COLORS['bg_white'])
-        links_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        links_frame.pack(fill=tk.X, expand=True) 
         
-        tk.Label(links_frame, text="Nombre de liens (NL):",
+        # Remplacement par "Nombre d'articulations:"
+        tk.Label(links_frame, text="Nombre d'articulations:",
                 font=('Arial', 9, 'bold'),
                 bg=COLORS['bg_white'],
-                fg=COLORS['text_dark']).pack(anchor=tk.W)
-        
+                fg=COLORS['text_dark']).pack(side=tk.LEFT, padx=(0, 10)) 
+
         self.nl_var = tk.IntVar(value=self.current_nl or 6)
         nl_spin = tk.Spinbox(links_frame, 
                             from_=1, to=20,
@@ -105,71 +108,23 @@ class DialogDefinition(tk.Toplevel):
                             width=8,
                             font=('Arial', 10),
                             bg=COLORS['bg_light'])
-        nl_spin.pack(pady=5)
-        
-        # Number of Joints
-        joints_frame = tk.Frame(struct_frame, bg=COLORS['bg_white'])
-        joints_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
-        
-        tk.Label(joints_frame, text="Nombre de joints (NJ):",
-                font=('Arial', 9, 'bold'),
-                bg=COLORS['bg_white'],
-                fg=COLORS['text_dark']).pack(anchor=tk.W)
-        
-        self.nj_var = tk.IntVar(value=self.current_nj or 6)
-        nj_spin = tk.Spinbox(joints_frame, 
-                            from_=1, to=20,
-                            textvariable=self.nj_var,
-                            width=8,
-                            font=('Arial', 10),
-                            bg=COLORS['bg_light'])
-        nj_spin.pack(pady=5)
-        
-        # Number of Frames
-        frames_frame = tk.Frame(struct_frame, bg=COLORS['bg_white'])
-        frames_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        
-        tk.Label(frames_frame, text="Nombre de frames (NF):",
-                font=('Arial', 9, 'bold'),
-                bg=COLORS['bg_white'],
-                fg=COLORS['text_dark']).pack(anchor=tk.W)
-        
-        self.nf_var = tk.IntVar(value=max((self.current_nj or 6) + 1, 7))
-        nf_spin = tk.Spinbox(frames_frame, 
-                            from_=2, to=21,
-                            textvariable=self.nf_var,
-                            width=8,
-                            font=('Arial', 10),
-                            bg=COLORS['bg_light'])
-        nf_spin.pack(pady=5)
+        nl_spin.pack(side=tk.LEFT)
         
         # Robot Type Section
-        type_frame = ttk.LabelFrame(main_frame, 
-                                   text="🔧 Type de Structure",
-                                   style='Modern.TLabelframe',
-                                   padding=15)
-        type_frame.pack(fill=tk.X, pady=(0, 15))
+
         
-        self.structure_var = tk.StringVar(value=self.current_structure or "Série")
-        structures = ["Série"]
+        # We enforce "Série"
+        self.structure_var = tk.StringVar(value="Série")
         
-        for i, struct in enumerate(structures):
-            rb = tk.Radiobutton(type_frame,
-                               text=struct,
-                               variable=self.structure_var,
-                               value=struct,
-                               font=('Arial', 10),
-                               bg=COLORS['bg_white'],
-                               fg=COLORS['text_dark'],
-                               selectcolor=COLORS['secondary'])
-            rb.pack(anchor=tk.W, pady=2)
+
+
         
         # Base Configuration Section
         base_frame = ttk.LabelFrame(main_frame, 
                                    text="🏗️ Configuration de Base",
                                    style='Modern.TLabelframe',
                                    padding=15)
-        base_frame.pack(fill=tk.X, pady=(0, 15))
+        base_frame.pack(fill=tk.X, pady=(0, 10)) # PADY RÉDUIT
         
         # Floating Base
         base_options_frame = tk.Frame(base_frame, bg=COLORS['bg_white'])
@@ -197,9 +152,9 @@ class DialogDefinition(tk.Toplevel):
         mobile_cb.pack(anchor=tk.W, pady=(5, 0))
 
         
-        # Buttons Section
+        # Buttons Section (DOIT ÊTRE VISIBLE)
         buttons_frame = tk.Frame(main_frame, bg=COLORS['bg_light'])
-        buttons_frame.pack(fill=tk.X, pady=20)
+        buttons_frame.pack(fill=tk.X, pady=(10, 0))
         
         # Cancel Button
         cancel_btn = ModernButton(buttons_frame,
@@ -224,12 +179,15 @@ class DialogDefinition(tk.Toplevel):
         if not self.name_var.get().strip():
             messagebox.showerror("Erreur", "Veuillez entrer un nom pour le robot.")
             return
+        
+        # Logique simplifiée pour robot série: NL = NJ = NF
+        num_links = self.nl_var.get()
             
         self.result = {
             'name': self.name_var.get().strip(),
-            'num_links': self.nl_var.get(),
-            'num_joints': self.nj_var.get(),
-            'num_frames': self.nf_var.get(),
+            'num_links': num_links,
+            'num_joints': num_links,
+            'num_frames': num_links,
             'structure': self.structure_var.get(),
             'is_floating': self.floating_var.get(),
             'is_mobile': self.mobile_var.get()
