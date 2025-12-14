@@ -1,47 +1,43 @@
 from Interface import tk, ttk, messagebox, COLORS, ModernButton
 from .base_mixin import BaseMixin
-# Importe Symbol pour la compatibilité, bien que son usage soit indirect ici
 from sympy import Symbol 
 from tkinter import font as tkfont
-# NOTE: L'import de SYMOROBridge a été retiré, car la logique d'extraction 
-# des noms est désormais locale via _get_joint_variable_names.
+import numpy as np
 
 
 class ParameterMixin(BaseMixin):
-
-     """Mixin pour la gestion des paramètres DH avec la validation et les contrôles articulaires."""
+    """Mixin pour la gestion des paramètres DH avec la validation et les contrôles articulaires."""
     
-     MIN_JOINTS = 1   
-     MAX_JOINTS = 6
-     DEFAULT_JOINTS = 3
+    MIN_JOINTS = 1   
+    MAX_JOINTS = 6
+    DEFAULT_JOINTS = 3
 
-     PARAM_DESCRIPTIONS = {
+    PARAM_DESCRIPTIONS = {
         'theta': "Angle de rotation autour de l'axe Z (en degrés)",
         'd': "Translation le long de l'axe Z (en mètres)",
         'r': "Longueur du segment (en mètres)",
         'alpha': "Angle de torsion autour de l'axe X (en degrés)"
-     }
-     
-     DH_HEADERS = [
+    }
+    
+    DH_HEADERS = [
         ("🔗", "J"),
         ("🔄", "θ"),
         ("📏", "d"),
         ("📐", "r"),
         ("↻", "α"),
         ("⚙", "T")
-     ]
-     
-     def _get_joint_variable_names(self, robot):
+    ]
+    
+    def _get_joint_variable_names(self, robot):
         """[UTILITAIRE] Extrait les noms des variables articulaires directement du robot."""
         var_names = []
-        # Parcourir les joints de 1 à NJ
         for j in range(1, robot.NJ):
             q_sym = robot.get_q(j) 
             if q_sym != 0:
                 var_names.append(str(q_sym))
         return var_names
 
-     def create_dh_parameters_section(self, parent):
+    def create_dh_parameters_section(self, parent):
         """Section de saisie des paramètres DH - Version compacte (Sidebar)"""
         
         # Contrôles compacts
@@ -55,7 +51,9 @@ class ParameterMixin(BaseMixin):
             font=('Arial', 9, 'bold')
         ).pack(side=tk.LEFT, padx=3)
         
-        self.joint_count = tk.IntVar(value=self.DEFAULT_JOINTS)
+        # Initialiser avec le nombre d'articulations du robot actuel
+        initial_joints = self.robo.NJ - 1 if hasattr(self, 'robo') and self.robo else self.DEFAULT_JOINTS
+        self.joint_count = tk.IntVar(value=initial_joints)
         
         tk.Spinbox(
             control_frame,
@@ -80,7 +78,6 @@ class ParameterMixin(BaseMixin):
         
         # Table scrollable
         canvas_frame = tk.Frame(parent, bg=COLORS['bg_white'])
-        # 🎯 CORRECTION LAYOUT : expand=False pour éviter le conflit avec les sliders
         canvas_frame.pack(fill=tk.BOTH, expand=False, padx=0, pady=5) 
         
         canvas = tk.Canvas(canvas_frame, bg=COLORS['bg_white'], highlightthickness=0)
@@ -101,8 +98,8 @@ class ParameterMixin(BaseMixin):
         self.dh_entries = []
         self.update_dh_table()
 
-     def update_dh_table(self):
-        """Met à jour le tableau DH (Méthode principale)"""
+    def update_dh_table(self):
+        """Met à jour le tableau DH avec les valeurs du robot actuel"""
         
         for widget in self.dh_table_frame.winfo_children():
             widget.destroy()
@@ -117,7 +114,7 @@ class ParameterMixin(BaseMixin):
         
         self._create_validation_button(n_joints)
 
-     def _create_table_headers(self):
+    def _create_table_headers(self):
         """Crée les en-têtes du tableau DH."""
         for col, (icon, text) in enumerate(self.DH_HEADERS):
             frame = tk.Frame(self.dh_table_frame, bg=COLORS['primary'])
@@ -131,9 +128,60 @@ class ParameterMixin(BaseMixin):
                 fg=COLORS['text_light'],
                 pady=2
             ).pack(fill=tk.BOTH, expand=True)
+    
+    def _get_dh_value_from_robot(self, joint_index, param):
+        """Récupère la valeur DH du robot actuel pour un joint donné"""
+        if not hasattr(self, 'robo') or not self.robo:
+            return "0.0"
+        
+        frame_idx = joint_index + 1
+        
+        if frame_idx >= self.robo.NF:
+            return "0.0"
+        
+        try:
+            value = self.robo.get_val(frame_idx, param)
             
-     def _create_joint_row(self, joint_index):
-        """Crée une ligne pour une articulation avec champs de saisie."""
+            if value == 0 or value is None:
+                return "0.0"
+            
+            if hasattr(value, '__str__'):
+                value_str = str(value)
+                try:
+                    float_val = float(value_str)
+                    # Conversion rad -> deg pour angles
+                    if param in ['theta', 'alpha']:
+                        return f"{np.degrees(float_val):.2f}"
+                    return f"{float_val:.3f}"
+                except (ValueError, TypeError):
+                    # C'est un symbole
+                    return value_str
+            
+            return str(value)
+            
+        except Exception as e:
+            print(f"⚠️ Erreur lecture {param} pour J{joint_index+1}: {e}")
+            return "0.0"
+    
+    def _get_joint_type_from_robot(self, joint_index):
+        """Récupère le type d'articulation du robot actuel"""
+        if not hasattr(self, 'robo') or not self.robo:
+            return "R"
+        
+        frame_idx = joint_index + 1
+        
+        if frame_idx >= self.robo.NF:
+            return "R"
+        
+        try:
+            sigma = self.robo.get_val(frame_idx, 'sigma')
+            return "R" if int(sigma) == 0 else "P"
+        except Exception as e:
+            print(f"⚠️ Erreur lecture sigma pour J{joint_index+1}: {e}")
+            return "R"
+    
+    def _create_joint_row(self, joint_index):
+        """Crée une ligne pour une articulation avec les valeurs du robot actuel"""
         joint_entries = {}
         row = joint_index + 1
         row_bg = COLORS['bg_light'] if joint_index % 2 == 0 else COLORS['bg_white']
@@ -151,7 +199,7 @@ class ParameterMixin(BaseMixin):
             pady=3
         ).pack(pady=2)
         
-        # Champs de paramètres compacts
+        # Champs de paramètres avec valeurs du robot
         for col, param in enumerate(['theta', 'd', 'r', 'alpha'], start=1):
             frame = tk.Frame(self.dh_table_frame, bg=row_bg)
             frame.grid(row=row, column=col, padx=1, pady=1, sticky='ew')
@@ -164,10 +212,13 @@ class ParameterMixin(BaseMixin):
                 justify=tk.CENTER
             )
             entry.pack(pady=2, padx=2)
-            entry.insert(0, "0.0")
+            
+            value = self._get_dh_value_from_robot(joint_index, param)
+            entry.insert(0, value)
+            
             joint_entries[param] = entry
         
-        # Combobox type compact
+        # Combobox type avec valeur du robot
         frame = tk.Frame(self.dh_table_frame, bg=row_bg)
         frame.grid(row=row, column=5, padx=1, pady=1, sticky='ew')
         
@@ -178,13 +229,16 @@ class ParameterMixin(BaseMixin):
             state="readonly",
             font=('Arial', 9)
         )
-        combo.set("R")
+        
+        joint_type = self._get_joint_type_from_robot(joint_index)
+        combo.set(joint_type)
+        
         combo.pack(pady=2, padx=2)
         joint_entries['type'] = combo
         
         self.dh_entries.append(joint_entries)
 
-     def _create_validation_button(self, n_joints):
+    def _create_validation_button(self, n_joints):
         """Crée le bouton de validation."""
         frame = tk.Frame(self.dh_table_frame, bg=COLORS['bg_white'])
         frame.grid(row=n_joints + 1, column=0, columnspan=6, pady=20)
@@ -199,18 +253,16 @@ class ParameterMixin(BaseMixin):
             height=35
         ).pack() 
 
-     def validate_dh_params(self):
-        """Valide les paramètres DH (lancement du MGD) et affiche le succès."""
+    def validate_dh_params(self):
+        """Valide les paramètres DH et affiche le succès."""
         try:
             params = self._extract_parameters()
             
             if not self._validate_parameters(params):
                 return
             
-            # --- LOGIQUE D'AFFICHAGE DU SUCCÈS RÉINTÉGRÉE ---
             success_msg = self._format_success_message(params)
             self.show_success("Validation DH", success_msg)
-            # --- FIN LOGIQUE D'AFFICHAGE DU SUCCÈS RÉINTÉGRÉE ---
 
         except ValueError as e:
             self.show_error(
@@ -220,7 +272,7 @@ class ParameterMixin(BaseMixin):
         except Exception as e:
             self.show_error("Erreur", f"Erreur inattendue: {e}")
     
-     def _extract_parameters(self):
+    def _extract_parameters(self):
         """Extrait les paramètres des champs de saisie."""
         params = []
         for joint in self.dh_entries:
@@ -234,19 +286,17 @@ class ParameterMixin(BaseMixin):
             params.append(param)
         return params
 
-     def _validate_parameters(self, params):
-        """Validation métier des paramètres (Vérifie les types de saisie)."""
-        # Seuls les paramètres DH peuvent avoir des symboles SymPy pour les DH constants
+    def _validate_parameters(self, params):
+        """Validation métier des paramètres."""
         for i, param in enumerate(params):
             for key in ['theta', 'd', 'r', 'alpha']:
                 try:
                     float(param[key])
                 except ValueError:
-                    # C'est un symbole (str), c'est acceptable pour SYMORO.
                     pass
         return True
     
-     def _format_success_message(self, params):
+    def _format_success_message(self, params):
         """Formate le message de succès."""
         msg = f"Paramètres validés avec succès !\n\n"
         msg += f"🤖 Robot à {len(params)} articulation(s)\n\n"
@@ -255,7 +305,7 @@ class ParameterMixin(BaseMixin):
             msg += f"r={p['r']}m, α={p['alpha']}°, Type={p['type']}\n"
         return msg
 
-     def create_joint_control_section(self, parent):
+    def create_joint_control_section(self, parent):
         """Crée la section des contrôles articulaires (sliders)."""
         
         control_frame = ttk.LabelFrame(
@@ -264,19 +314,15 @@ class ParameterMixin(BaseMixin):
             style='Modern.TLabelframe',
             padding=10
         )
-        # 🎯 LAYOUT FIX: expand=True pour prendre l'espace restant de la sidebar
         control_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0)) 
         
-        # Conteneur scrollable 
         self.joint_control_container = tk.Frame(control_frame, bg=COLORS['bg_white'])
         self.joint_control_container.pack(fill=tk.BOTH, expand=True)
         
         self.joint_control_vars = {} 
 
-     def update_joint_controls(self):
-        """
-        Génère les sliders/spinboxes en fonction du robot chargé.
-        """
+    def update_joint_controls(self):
+        """Génère les sliders/spinboxes en fonction du robot chargé."""
         
         for widget in self.joint_control_container.winfo_children():
             widget.destroy()
@@ -284,7 +330,6 @@ class ParameterMixin(BaseMixin):
         if not hasattr(self, 'robo') or not self.robo:
             return
 
-        # 🎯 NOUVEAU : Utilitaire interne pour obtenir les noms des variables
         joint_names = self._get_joint_variable_names(self.robo)
         
         self.joint_control_vars = {}
@@ -296,15 +341,12 @@ class ParameterMixin(BaseMixin):
             range_to = 180 if is_angular else 2.0
             resolution = 1 if is_angular else 0.01
 
-            # Créer la variable Tkinter
             var = tk.DoubleVar(value=0.0)
             self.joint_control_vars[name] = var
 
-            # 1. Étiquette
             tk.Label(self.joint_control_container, text=f"{name}:", 
                      bg=COLORS['bg_white'], font=('Arial', 9, 'bold')).grid(row=i, column=0, padx=5, pady=5, sticky='w')
             
-            # 2. Spinbox (Saisie directe)
             spinbox = tk.Spinbox(self.joint_control_container,
                                  from_=range_from,
                                  to=range_to,
@@ -315,7 +357,6 @@ class ParameterMixin(BaseMixin):
                                  command=self.update_viz_from_controls) 
             spinbox.grid(row=i, column=1, padx=5, pady=5)
 
-            # 3. Slider (Contrôle visuel)
             slider = ttk.Scale(self.joint_control_container,
                                from_=range_from,
                                to=range_to,
@@ -326,13 +367,8 @@ class ParameterMixin(BaseMixin):
                                style='TScale')
             slider.grid(row=i, column=2, padx=5, pady=5)
 
-    # Modifier la méthode update_viz_from_controls() :
-
-     def update_viz_from_controls(self):
-        """
-        Déclenche la mise à jour de la visualisation 3D (appelée par les sliders).
-        """
-        # Vérifier si le renderer existe via l'héritage de VisualizationMixin
+    def update_viz_from_controls(self):
+        """Déclenche la mise à jour de la visualisation 3D."""
         if not hasattr(self, 'renderer_3d') or self.renderer_3d is None:
             return
             
@@ -343,5 +379,4 @@ class ParameterMixin(BaseMixin):
         for name, var in self.joint_control_vars.items():
             joint_config[name] = var.get()
             
-        # 🎯 APPEL DIRECT À L'API DU RENDERER V2
         self.renderer_3d.set_joint_values(joint_config)

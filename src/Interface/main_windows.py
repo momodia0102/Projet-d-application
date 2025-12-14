@@ -20,54 +20,46 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 
-
 class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
-    
     """Fenêtre principale de l'application - Version moderne"""
     
     def __init__(self, root):
         self.root = root
+        
+        # 🆕 CRITIQUE : Initialiser le robot AVANT l'interface
+        self.robo = None
+        self.sidebar_visible = False
+        self.init_example_robot()
+        
+        # Maintenant on peut créer l'interface avec self.robo déjà défini
         self.setup_window()
         self.setup_styles()
         self.create_header()
         self.create_main_layout()
         self.create_footer()
 
-        self.robo = None
-        self.sidebar_visible = False
-        self.init_example_robot()
-        
-
     def init_example_robot(self):
-        """Initialiser ou charger un robot par défaut """
+        """Initialiser le robot par défaut RX90"""
         try:
-            from outils import configfile
-            par_file_path = configfile.get_last_robot()
-
-            if par_file_path and os.path.exists(par_file_path):
-                robo_name = os.path.split(par_file_path)[1][:4]
-                self.robo, flag = parfile.readpar(robo_name, par_file_path)
-                if self.robo is None:
-                    self.create_default_robot()
-                else:
-                    self.create_default_robot()
-
+            from outils import samplerobots
+            self.robo = samplerobots.rx90()
+            self.robo.set_defaults(base=True, joint=True, geom=True)
         except Exception as e:
-            print(f"Erreur lors du chargement du robot: {e}")
-            self.create_default_robot()
+            print(f'❌ Erreur création robot par défaut: {e}')
+            self.robo = Robot(name="MonRobot", NL=6, NJ=6, NF=6, structure="Série")
+            self.robo.set_defaults(base=True, joint=True, geom=True)
 
     def create_default_robot(self):
         """Créer un robot par défaut"""
         try:
             from outils import samplerobots
             self.robo = samplerobots.rx90()
-            self.robo.set_defaults(base=True, joint = True ,geom=True)
+            self.robo.set_defaults(base=True, joint=True, geom=True)
         except Exception as e:
-            print(f'Erreur création robot par défaut :{e}')
-            self.robo = Robot( name ="MonRobot", NL=6, NJ=6, NF=6, structure="Série")
-            self.robo.set_defaults(base=True, joint=True,geom=True)
+            print(f'❌ Erreur création robot par défaut: {e}')
+            self.robo = Robot(name="MonRobot", NL=6, NJ=6, NF=6, structure="Série")
+            self.robo.set_defaults(base=True, joint=True, geom=True)
     
-
     def calculate_mgd(self):
         """Calculer le modèle Géométrique Direct"""
         try:
@@ -88,15 +80,11 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             output_file = symo.file_out.name
             result_text = self.read_output(output_file)
             
-            # 🆕 Utiliser la méthode du mixin ResultMixin
             self.display_mgd_result(result_text)
 
-            # 🎯 3. VISUALISATION (Approche Directe SYMORO)
+            # 3. VISUALISATION
             if hasattr(self, 'renderer_3d') and self.renderer_3d:
-                # A. Charger la hiérarchie du robot
                 self.renderer_3d.load_robot(self.robo)
-                
-                # B. Initialiser les contrôles (Sliders)
                 self.update_joint_controls()
             else:
                 print("⚠️ Renderer 3D non disponible")
@@ -112,11 +100,11 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
     def read_output(self, file_path):
         """Lire le contenu du fichier de Sortie"""
         try:
-            with open(file_path, 'r' , encoding='utf-8')as f :
+            with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             return content
         except Exception as e:
-            return  f"❌ Erreur lecture fichier: {e}\n\nChemin: {file_path}"
+            return f"❌ Erreur lecture fichier: {e}\n\nChemin: {file_path}"
 
     def display_mgd_result(self, result_text):
         """Affiche le résultat MGD"""
@@ -139,15 +127,12 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         """Affiche le résultat MCI"""
         self.update_result('mci', f"🎯 MCI\n\n{result_text}")
 
-
     def setup_window(self):
         """Configuration de la fenêtre principale"""
         self.root.title("Robot Modeler 🤖 - Centrale Nantes")
         self.root.geometry("1400x900")
         self.root.minsize(1200, 700)
         self.root.configure(bg=COLORS['bg_light'])
-        
-        # Centrer la fenêtre
         self.center_window()
         
     def center_window(self):
@@ -164,7 +149,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         style = ttk.Style()
         style.theme_use('clam')
         
-        # Style pour les LabelFrame
         style.configure('Modern.TLabelframe', 
                        background=COLORS['bg_white'],
                        borderwidth=2,
@@ -174,18 +158,15 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
                        foreground=COLORS['primary'],
                        font=('Arial', 11, 'bold'))
         
-        # Style pour les Entry
         style.configure('Modern.TEntry',
                        fieldbackground=COLORS['bg_white'],
                        borderwidth=1,
                        relief='solid')
         
-        # Style pour les Combobox
         style.configure('Modern.TCombobox',
                        fieldbackground=COLORS['bg_white'],
                        background=COLORS['bg_white'])
         
-        # Style pour les Notebook
         style.configure('Modern.TNotebook',
                        background=COLORS['bg_white'],
                        borderwidth=0)
@@ -204,7 +185,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         header.pack(fill=tk.X, side=tk.TOP)
         header.pack_propagate(False)
         
-        # Titre principal
         title_frame = tk.Frame(header, bg=COLORS['primary'])
         title_frame.pack(expand=True)
         
@@ -222,7 +202,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
                                  fg=COLORS['text_light'])
         subtitle_label.pack(side=tk.LEFT, padx=10)
         
-        # Menu hamburger (simplifié)
         menu_btn = tk.Label(header, text="☰", font=('Arial', 20),
                            bg=COLORS['primary'], fg=COLORS['secondary'],
                            cursor='hand2')
@@ -251,7 +230,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         menu.add_separator()
         menu.add_command(label="❌ Quitter", command=self.root.quit)
         
-        # Afficher le menu à la position de la souris
         try:
             menu.tk_popup(self.root.winfo_pointerx(), self.root.winfo_pointery())
         finally:
@@ -269,20 +247,17 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
     def create_main_layout(self):
         """Crée la disposition principale avec sidebar coulissante"""
         
-        # Conteneur principal
         main_container = tk.Frame(self.root, bg=COLORS['bg_light'])
         main_container.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
         
-        # === SIDEBAR COULISSANTE (masquée par défaut) ===
+        # SIDEBAR
         self.sidebar_frame = tk.Frame(main_container, bg=COLORS['bg_white'], width=380)
         self.sidebar_frame.pack(side=tk.LEFT, fill=tk.Y)
-        self.sidebar_frame.pack_forget()  # Masquer au départ
+        self.sidebar_frame.pack_forget()
         
-        # Contenu de la sidebar
         sidebar_content = tk.Frame(self.sidebar_frame, bg=COLORS['bg_white'])
         sidebar_content.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Bouton fermer en haut
         close_btn = ModernButton(
             sidebar_content,
             "✕ Fermer",
@@ -293,7 +268,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         )
         close_btn.pack(anchor='ne', pady=(0, 10))
         
-        # Titre sidebar
         tk.Label(
             sidebar_content,
             text="⚙️ Paramètres DH",
@@ -302,15 +276,13 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             fg=COLORS['primary']
         ).pack(pady=(0, 10))
         
-        # Section DH compacte
         self.create_dh_parameters_section(sidebar_content)
         self.create_joint_control_section(sidebar_content)
         
-        # === ZONE CENTRALE (toujours visible) ===
+        # ZONE CENTRALE
         center_container = tk.Frame(main_container, bg=COLORS['bg_light'])
         center_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Bouton pour ouvrir la sidebar
         btn_frame = tk.Frame(center_container, bg=COLORS['bg_light'])
         btn_frame.pack(fill=tk.X, pady=(0, 10))
         
@@ -332,7 +304,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             height=40
         ).pack(side=tk.LEFT, padx=10)
         
-        # PanedWindow pour Visualisation et Résultats
         paned = tk.PanedWindow(
             center_container,
             orient=tk.HORIZONTAL,
@@ -342,7 +313,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         )
         paned.pack(fill=tk.BOTH, expand=True)
         
-        # Zone Visualisation (plus grande)
         viz_frame = ttk.LabelFrame(
             paned,
             text="👁️ Visualisation 3D du Robot",
@@ -352,7 +322,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         paned.add(viz_frame, minsize=500)
         self.create_visualization_section(viz_frame)
         
-        # Zone Résultats (moyenne)
         result_frame = ttk.LabelFrame(
             paned,
             text="📊 Résultats",
@@ -361,8 +330,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         )
         paned.add(result_frame, minsize=350)
         self.create_results_section(result_frame)
-
-      
     
     def create_tooltip(self, widget, text):
         """Crée une infobulle pour un widget"""
@@ -389,36 +356,34 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         widget.bind('<Enter>', show_tooltip)
         widget.bind('<Leave>', hide_tooltip)
   
-       
     def update_robo_from_dh(self):
-            """Mettre à jour le robot avec les paramètres DH saisis"""
-            if not self.robo or not self.dh_entries:
-                return
-            
-            try:
-                for i, joint in enumerate(self.dh_entries, 1):
-                    frame_idx = i
-                    
-                    # Récupérer les valeurs (numériques ou symboliques)
-                    theta_val = self.parse_dh_value(joint['theta'].get())
-                    d_val = self.parse_dh_value(joint['d'].get())
-                    a_val = self.parse_dh_value(joint['r'].get())
-                    alpha_val = self.parse_dh_value(joint['alpha'].get())
-                    joint_type = joint['type'].get()
-
-                    self.robo.put_val(frame_idx, 'theta', theta_val)
-                    self.robo.put_val(frame_idx, 'd', d_val)
-                    self.robo.put_val(frame_idx, 'r', a_val)
-                    self.robo.put_val(frame_idx, 'alpha', alpha_val)
-
-                    sigma = 0 if 'R' in joint_type else 1
-                    self.robo.put_val(frame_idx, 'sigma', sigma)
-
-                print("✅ Paramètres DH synchronisés avec le robot ")
-            except Exception as e:
-                print(f"❌ Erreur synchronisation DH: {e}")
-                messagebox.showerror("Erreur", f"Erreur lors de la synchronisation des paramètres: {e}")
+        """Mettre à jour le robot avec les paramètres DH saisis"""
+        if not self.robo or not self.dh_entries:
+            return
         
+        try:
+            for i, joint in enumerate(self.dh_entries, 1):
+                frame_idx = i
+                
+                theta_val = self.parse_dh_value(joint['theta'].get())
+                d_val = self.parse_dh_value(joint['d'].get())
+                a_val = self.parse_dh_value(joint['r'].get())
+                alpha_val = self.parse_dh_value(joint['alpha'].get())
+                joint_type = joint['type'].get()
+
+                self.robo.put_val(frame_idx, 'theta', theta_val)
+                self.robo.put_val(frame_idx, 'd', d_val)
+                self.robo.put_val(frame_idx, 'r', a_val)
+                self.robo.put_val(frame_idx, 'alpha', alpha_val)
+
+                sigma = 0 if 'R' in joint_type else 1
+                self.robo.put_val(frame_idx, 'sigma', sigma)
+
+            print("✅ Paramètres DH synchronisés avec le robot ")
+        except Exception as e:
+            print(f"❌ Erreur synchronisation DH: {e}")
+            messagebox.showerror("Erreur", f"Erreur lors de la synchronisation des paramètres: {e}")
+    
     def parse_dh_value(self, value_str):
         """Parse une valeur DH : numérique ou symbolique"""
         if not value_str or value_str.strip() == "":
@@ -426,17 +391,11 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         
         value_str = value_str.strip()
         
-        # Essayer de convertir en nombre
         try:
             return float(value_str)
         except ValueError:
-            # Si ce n'est pas un nombre, retourner la chaîne (variable symbolique)
             return value_str
-        
-  
-
-
-  
+    
     def create_footer(self):
         """Crée le pied de page"""
         footer = tk.Frame(self.root, bg=COLORS['primary'], height=40)
@@ -454,10 +413,10 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         
     def new_robot(self):
         """Créer un nouveau robot avec formulaire détaillé"""
-        # Ouvrir le dialog de création de robot
+        # 🆕 Utiliser les valeurs du robot actuel pour pré-remplir le dialog
         current_name = self.robo.name if self.robo else "MonRobot"
-        current_nl = self.robo.NL if self.robo else 6
-        current_nj = self.robo.NJ if self.robo else 6
+        current_nl = self.robo.NL - 1 if self.robo else 6  # NL-1 = nombre d'articulations
+        current_nj = self.robo.NJ - 1 if self.robo else 6
         current_structure = self.robo.structure if self.robo else "Série"
         current_floating = self.robo.is_floating if self.robo else False
         current_mobile = self.robo.is_mobile if self.robo else False
@@ -472,15 +431,12 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             current_mobile=current_mobile
         )
         
-        # Attendre la fermeture du dialog
         self.root.wait_window(dialog)
         
-        # Récupérer les résultats
         result = dialog.get_values()
         
         if result:
             try:
-                # Créer le nouveau robot SYMORO
                 new_robo = Robot(
                     name=result['name'],
                     NL=result['num_links'],
@@ -491,19 +447,15 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
                     is_mobile=result['is_mobile']
                 )
                 
-                # Appliquer les paramètres par défaut
                 new_robo.set_defaults(base=True, joint=True, geom=True)
                 
-        
-                    
                 self.robo = new_robo
                 self.robo.directory = filemgr.get_folder_path(self.robo.name)
                 
-                # Mettre à jour l'interface
+                # 🆕 RAFRAÎCHIR le tableau DH avec le nouveau robot
                 self.joint_count.set(result['num_joints'])
                 self.update_dh_table()
                 
-                # Message de succès
                 success_msg = f"🤖 NOUVEAU ROBOT CRÉÉ AVEC SUCCÈS !\n\n"
                 success_msg += f"📝 Nom: {result['name']}\n"
                 success_msg += f"🔗 Liens: {result['num_links']}\n"
@@ -520,18 +472,157 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
                 messagebox.showerror("Erreur", f"Erreur lors de la création du robot: {e}")
 
     def load_robot(self):
-        """Charger un robot"""
-        messagebox.showinfo("Charger un robot",
-            "📂 Fonctionnalité de chargement\n\n"
-            "Vous pourrez bientôt charger des configurations\n"
-            "de robots sauvegardées.")
+        """Charger un robot depuis un fichier PAR"""
+        from tkinter import filedialog
+        
+        # Dossier par défaut
+        try:
+            default_dir = filemgr.get_base_path()
+        except Exception:
+            default_dir = None
+        
+        # Sélection du fichier
+        file_path = filedialog.askopenfilename(
+            title="📂 Charger un robot SYMORO",
+            initialdir=default_dir,
+            filetypes=[
+                ("Fichiers SYMORO PAR", "*.par"),
+                ("Tous les fichiers", "*.*")
+            ]
+        )
+        
+        if not file_path:
+            return
+        
+        # Chargement
+        try:
+            import os
+            robot_name = os.path.splitext(os.path.basename(file_path))[0]
+            
+            loaded_robot, flag = parfile.readpar(robot_name, file_path)
+            
+            if loaded_robot is None or flag == tools.FAIL:
+                messagebox.showerror(
+                    "Erreur de chargement",
+                    f"Impossible de charger le robot depuis:\n{file_path}\n\n"
+                    "Le fichier est peut-être corrompu ou incompatible."
+                )
+                return
+            
+            # Succès
+            self.robo = loaded_robot
+            self._refresh_interface_after_load()
+            
+            messagebox.showinfo(
+                "Chargement réussi",
+                f"✅ ROBOT CHARGÉ AVEC SUCCÈS !\n\n"
+                f"📝 Nom: {loaded_robot.name}\n"
+                f"🔗 Liens: {loaded_robot.NL - 1}\n"
+                f"🔄 Joints: {loaded_robot.NJ - 1}\n"
+                f"📐 Frames: {loaded_robot.NF - 1}\n"
+                f"🏗️ Structure: {loaded_robot.structure}\n"
+                f"📂 Fichier: {file_path}\n\n"
+                f"Le tableau DH a été mis à jour."
+            )
+            
+            # Sauvegarder config
+            try:
+                from outils import configfile
+                configfile.set_last_robot(file_path)
+            except Exception:
+                pass
+            
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors du chargement:\n\n{str(e)}")
+    
+    def _refresh_interface_after_load(self):
+        """Rafraîchir l'interface après chargement d'un robot"""
+        try:
+            # Mettre à jour le nombre d'articulations
+            if hasattr(self, 'joint_count'):
+                self.joint_count.set(self.robo.NJ - 1)
+            
+            # Régénérer le tableau DH
+            if hasattr(self, 'update_dh_table'):
+                self.update_dh_table()
+            
+            # Effacer la visualisation 3D
+            if hasattr(self, 'renderer_3d') and self.renderer_3d:
+                self.renderer_3d.clear()
+            
+            # Réinitialiser les contrôles articulaires
+            if hasattr(self, 'joint_control_vars'):
+                self.joint_control_vars = {}
+            
+        except Exception as e:
+            print(f"⚠️ Erreur rafraîchissement interface: {e}")
         
     def save_robot(self):
-        """Sauvegarder le robot"""
-        messagebox.showinfo("Sauvegarder",
-            "💾 Fonctionnalité de sauvegarde\n\n"
-            "Vous pourrez bientôt sauvegarder votre\n"
-            "configuration de robot.")
+        """Sauvegarder le robot actuel dans un fichier PAR"""
+        from tkinter import filedialog
+        
+        if not self.robo:
+            messagebox.showerror("Erreur", "Aucun robot à sauvegarder.")
+            return
+        
+        # Synchroniser DH
+        try:
+            self.update_robo_from_dh()
+        except Exception:
+            pass
+        
+        # Nom et dossier par défaut
+        default_filename = f"{filemgr.get_clean_name(self.robo.name)}.par"
+        
+        try:
+            default_dir = self.robo.directory if hasattr(self.robo, 'directory') else filemgr.get_base_path()
+        except Exception:
+            default_dir = None
+        
+        # Dialog de sauvegarde
+        file_path = filedialog.asksaveasfilename(
+            title="💾 Sauvegarder le robot",
+            initialdir=default_dir,
+            initialfile=default_filename,
+            defaultextension=".par",
+            filetypes=[
+                ("Fichiers SYMORO PAR", "*.par"),
+                ("Tous les fichiers", "*.*")
+            ]
+        )
+        
+        if not file_path:
+            return
+        
+        # Sauvegarde
+        try:
+            self.robo.par_file_path = file_path
+            parfile.writepar(self.robo)
+            
+            messagebox.showinfo(
+                "Sauvegarde réussie",
+                f"✅ ROBOT SAUVEGARDÉ AVEC SUCCÈS !\n\n"
+                f"📝 Nom: {self.robo.name}\n"
+                f"📂 Fichier: {file_path}\n\n"
+                f"Le fichier peut être rechargé ultérieurement."
+            )
+            
+            # Sauvegarder config
+            try:
+                from outils import configfile
+                configfile.set_last_robot(file_path)
+            except Exception:
+                pass
+            
+        except PermissionError:
+            messagebox.showerror(
+                "Erreur",
+                f"Permission refusée:\n{file_path}\n\n"
+                "Vérifiez que vous avez les droits d'écriture."
+            )
+            
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de la sauvegarde:\n\n{str(e)}")
         
     def calc_mgd(self):
         """Calculer MGD """
@@ -564,7 +655,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         help_window.geometry("600x500")
         help_window.configure(bg=COLORS['bg_white'])
         
-        # En-tête
         header = tk.Frame(help_window, bg=COLORS['primary'])
         header.pack(fill=tk.X)
         
@@ -574,7 +664,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
                 fg=COLORS['secondary'],
                 pady=15).pack()
         
-        # Contenu
         text_frame = tk.Frame(help_window, bg=COLORS['bg_white'])
         text_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
@@ -600,23 +689,6 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
    • Utilisez le menu ☰ en haut à droite
    • Sélectionnez le type de calcul souhaité
    • Consultez les résultats dans les onglets
-
-📐 PARAMÈTRES DENAVIT-HARTENBERG
-
-Les paramètres DH permettent de décrire la géométrie
-d'un robot manipulateur de manière systématique.
-
-💡 ASTUCES
-
-• Survolez les champs pour voir des infobulles
-• Les valeurs sont en degrés pour les angles
-• Les valeurs sont en mètres pour les distances
-• Sauvegardez régulièrement votre configuration
-
-❓ BESOIN D'AIDE ?
-
-Consultez la documentation complète ou contactez
-vos encadrants pour plus d'informations.
         """
         
         text = tk.Text(text_frame,
@@ -638,7 +710,6 @@ vos encadrants pour plus d'informations.
         about_window.geometry("500x400")
         about_window.configure(bg=COLORS['bg_white'])
         
-        # Logo/Titre
         header = tk.Frame(about_window, bg=COLORS['primary'])
         header.pack(fill=tk.X)
         
@@ -659,7 +730,6 @@ vos encadrants pour plus d'informations.
                 fg=COLORS['text_light'],
                 pady=10).pack()
         
-        # Informations
         info_frame = tk.Frame(about_window, bg=COLORS['bg_white'])
         info_frame.pack(fill=tk.BOTH, expand=True, padx=30, pady=30)
         
@@ -692,14 +762,12 @@ la convention Denavit-Hartenberg.
                 fg=COLORS['text_dark'],
                 justify=tk.LEFT).pack()
         
-        # Bouton fermer
         ModernButton(about_window, "✅ Fermer",
                     about_window.destroy,
                     bg_color=COLORS['secondary'],
                     width=120, height=35).pack(pady=10)
 
 
-# Point d'entrée
 if __name__ == "__main__":
     root = tk.Tk()
     app = MainWindow(root)
