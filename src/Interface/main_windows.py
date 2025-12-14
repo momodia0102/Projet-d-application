@@ -46,7 +46,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             self.robo.set_defaults(base=True, joint=True, geom=True)
         except Exception as e:
             print(f'❌ Erreur création robot par défaut: {e}')
-            self.robo = Robot(name="MonRobot", NL=6, NJ=6, NF=6, structure="Série")
+            self.robo = Robot(name="MonRobot", NL=6, NJ=6, NF=6, structure="Simple")
             self.robo.set_defaults(base=True, joint=True, geom=True)
 
     def create_default_robot(self):
@@ -57,7 +57,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             self.robo.set_defaults(base=True, joint=True, geom=True)
         except Exception as e:
             print(f'❌ Erreur création robot par défaut: {e}')
-            self.robo = Robot(name="MonRobot", NL=6, NJ=6, NF=6, structure="Série")
+            self.robo = Robot(name="MonRobot", NL=6, NJ=6, NF=6, structure="Simple")
             self.robo.set_defaults(base=True, joint=True, geom=True)
     
     def calculate_mgd(self):
@@ -417,7 +417,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         current_name = self.robo.name if self.robo else "MonRobot"
         current_nl = self.robo.NL - 1 if self.robo else 6  # NL-1 = nombre d'articulations
         current_nj = self.robo.NJ - 1 if self.robo else 6
-        current_structure = self.robo.structure if self.robo else "Série"
+        current_structure = self.robo.structure if self.robo else "Simple"
         current_floating = self.robo.is_floating if self.robo else False
         current_mobile = self.robo.is_mobile if self.robo else False
         

@@ -112,9 +112,9 @@ class DialogDefinition(tk.Toplevel):
         
         # Robot Type Section
 
-        
-        # We enforce "Série"
-        self.structure_var = tk.StringVar(value="Série")
+
+        # We enforce "Simple"
+        self.structure_var = tk.StringVar(value="Simple")
         
 
 
