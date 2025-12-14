@@ -108,6 +108,108 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             import traceback
             traceback.print_exc() 
             messagebox.showerror("Erreur", f"Erreur lors du calcul MGD: {e}")
+    '''def calculate_mcd(self):
+            """Calcul du Modèle Cinématique Direct"""
+
+            try:
+                # Mettre à jour le robot à partir du DH Editor
+                self.update_robo_from_dh()
+
+                if not self.robo:
+                    messagebox.showerror("Erreur", "Aucun robot chargé.")
+                    return
+
+                # Vitesses articulaires (ici mises à 0 si tu n'as pas de sliders)
+                qdot = []
+                for j in range(1, self.robo.NJ):
+                    qdot.append(0.0)
+
+                # Calcul MCD
+                from server.geometry import direct_kinematic
+                J, twist = direct_kinematic(self.robo, qdot)
+
+                # Format du display
+                result_text = (
+                    "⚡ MODÈLE CINÉMATIQUE DIRECT\n\n"
+                    f"Jacobien J(q):\n{J}\n\n"
+                    f"Twist (vitesse effecteur):\n{twist}\n"
+                )
+
+                # Affichage dans l'onglet MCD
+                self.display_mcd_result(result_text)
+
+                messagebox.showinfo(
+                    "Succès",
+                    "MCD calculé avec succès.\nConsultez l'onglet MCD."
+                )
+
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                messagebox.showerror("Erreur", f"Erreur MCD : {e}")'''
+    
+
+    def calculate_mcd(self):
+        """Calcul du Modèle Cinématique Direct (MCD)"""
+        
+        try:
+            # 1️⃣ Mettre à jour le robot à partir des paramètres DH
+            self.update_robo_from_dh()
+
+            if not self.robo:
+                messagebox.showerror("Erreur", "Aucun robot chargé.")
+                return
+        
+            # 2️⃣ Construire un qdot ADAPTÉ au type d’articulation
+            # Convention :
+            # - joint rotatif (sigma = 0)  -> rad/s
+            # - joint prismatique (sigma = 1) -> m/s
+            qdot = []
+
+            # ⚠️ IMPORTANT :
+            # SYMORO indexe souvent les joints à partir de 1
+            # et le Jacobien est de taille (6 x n)
+            for j in range(1, self.robo.NJ):
+                sigma_j = self.robo.sigma[j]
+
+                if sigma_j == 0:      # joint rotatif
+                    qdot.append(0.5)  # rad/s (valeur démo raisonnable)
+                else:                 # joint prismatique
+                    qdot.append(0.1)  # m/s
+
+            # 3️⃣ Calcul du Jacobien et du twist
+            from server.geometry import direct_kinematic
+            J, twist = direct_kinematic(self.robo, qdot)
+
+            # 4️⃣ Sécurité : vérification des dimensions
+            if J.shape[1] != len(qdot):
+                raise ValueError(
+                    f"Incohérence dimensions : J est {J.shape}, qdot est {len(qdot)}"
+                )
+
+            # 5️⃣ Formatage du résultat (clair et pédagogique)
+            result_text = (
+                "⚡ MODÈLE CINÉMATIQUE DIRECT (MCD)\n\n"
+                f"Nombre d’articulations : {len(qdot)}\n\n"
+                f"Vitesses articulaires q̇ :\n{qdot}\n\n"
+                f"Jacobien J(q) :\n{J}\n\n"
+                f"Twist (vitesse effecteur) :\n{twist}\n"
+            )
+
+            # 6️⃣ Affichage
+            self.display_mcd_result(result_text)
+
+            messagebox.showinfo(
+                "Succès",
+                "✅ MCD calculé avec succès.\nConsultez l'onglet MCD."
+            )
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Erreur", f"Erreur MCD : {e}")
+
+
 
     def read_output(self, file_path):
         """Lire le contenu du fichier de Sortie"""
