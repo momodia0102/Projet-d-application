@@ -34,13 +34,13 @@ from matplotlib.widgets import Slider
 
 DH_TABLE = [
     [45, 2.0, 2.0, 45.0],
-    [45, 7.0, 3.0, 45.0],
+    [45, 7.0, 1.0, 45.0],
 ]
 
 # 0 = rotation, 1 = translation
 SIGMAS = [
     0,
-    0,
+    1,
 ]
 
 
