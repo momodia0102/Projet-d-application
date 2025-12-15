@@ -752,116 +752,101 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
             "pour obtenir une vitesse d'effecteur donnée.\n\n"
             "Résultats disponibles dans l'onglet MCI.")
         
-# Ajoutez ceci dans src/Interface/main_windows.py (dans la classe MainWindow)
 
     def export_mgd_python(self):
-            """Génère et télécharge un script Python autonome du MGD (Version Corrigée)"""
-            from tkinter import filedialog
-            from server import geometry
-            from outils import symbolmgr
-            import datetime
-            import textwrap  # Pour nettoyer l'indentation
+        """Génère un script Python autonome (MGD + visualisation)"""
+        from tkinter import filedialog
+        from exportation_python import generateur
+        import os
 
-            if not self.robo:
-                messagebox.showerror("Erreur", "Veuillez d'abord charger ou créer un robot.")
-                return
+        if not self.robo:
+            messagebox.showerror("Erreur", "Veuillez charger ou créer un robot.")
+            return
 
-            # 1. Demander où sauvegarder le fichier
-            default_name = f"mgd_{self.robo.name}.py"
-            file_path = filedialog.asksaveasfilename(
-                title="💾 Exporter le MGD en Python",
-                initialfile=default_name,
-                defaultextension=".py",
-                filetypes=[("Fichier Python", "*.py")]
+        # 🔹 Synchroniser le robot avec le tableau DH
+        try:
+            self.update_robo_from_dh()
+        except Exception as e:
+            messagebox.showerror(
+                "Erreur",
+                f"Impossible de synchroniser les paramètres DH :\n{e}"
+            )
+            return
+
+        # 🔹 Nom par défaut
+        safe_name = self.robo.name.lower().replace(" ", "_")
+        default_name = f"robot_{safe_name}.py"
+
+        # 🔹 Choix du fichier de sortie
+        output_path = filedialog.asksaveasfilename(
+            title="💾 Exporter le script Python",
+            initialfile=default_name,
+            defaultextension=".py",
+            filetypes=[("Script Python", "*.py")]
+        )
+
+        if not output_path:
+            return
+
+        try:
+            # ===============================
+            # 🔥 EXTRACTION DES DONNÉES ROBOT
+            # ===============================
+
+            robot_name = self.robo.name
+
+            dh_table = []
+            for i in range(1, self.robo.NJ):
+                dh_table.append([
+                    self.robo.get_val(i, 'theta'),
+                    self.robo.get_val(i, 'd'),
+                    self.robo.get_val(i, 'r'),
+                    self.robo.get_val(i, 'alpha')
+                ])
+
+            sigmas = []
+            for i in range(1, self.robo.NJ):
+                sigmas.append(self.robo.get_val(i, 'sigma'))
+
+            constants = {}
+            try:
+                constants = dict(self.robo.constants)
+            except Exception:
+                pass
+
+            # ===============================
+            # 🐍 GÉNÉRATION DU SCRIPT
+            # ===============================
+
+            generator = generateur.RobotScriptGenerator(
+                robot_name=robot_name,
+                dh_table=dh_table,
+                sigmas=sigmas,
+                constants=constants
             )
 
-            if not file_path:
-                return
+            # ⚠️ IMPORTANT : on passe le chemin du fichier
+            generator.generate(output_path)
 
-            try:
-                # 2. Initialiser le gestionnaire symbolique
-                symo = symbolmgr.SymbolManager(file_out=None)
-                
-                # 3. Calculer la Matrice de Transformation (0 -> Effecteur)
-                T = geometry.dgm(self.robo, symo, self.robo.NF-1, 0, fast_form=True)
-                
-                # 4. Identifier les variables articulaires (q)
-                q_vars = self.robo.q_vec 
+            messagebox.showinfo(
+                "Succès",
+                "✅ Script Python généré avec succès !\n\n"
+                f"📄 Fichier : {os.path.basename(output_path)}\n\n"
+                "👉 Le chercheur peut :\n"
+                "• Modifier les paramètres DH dans le script\n"
+                "• Modifier les constantes (D3, RL4, ...)\n"
+                "• Lancer directement :\n\n"
+                f"    python {os.path.basename(output_path)}"
+            )
 
-                # 5. Générer le corps de la fonction Python via SYMORO
-                # Cette fonction génère tout : "def calcul_mgd(*args): ..."
-                func_body = symo.gen_func_string("calcul_mgd", T, q_vars, syntax='python')
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror(
+                "Erreur d'exportation",
+                f"❌ Échec de la génération du script :\n{e}"
+            )
 
-                # 6. Construire le contenu du fichier proprement
-                # On utilise dedent pour supprimer l'indentation du bloc de texte
-                header = textwrap.dedent(f'''\
-                    #!/usr/bin/env python3
-                    # -*- coding: utf-8 -*-
-                    """
-                    Script MGD généré automatiquement par Robot Modeler
-                    Robot: {self.robo.name}
-                    Date: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}
-
-                    Ce script permet de calculer la matrice de transformation homogène
-                    de la base vers l'effecteur.
-                    """
-
-                    import numpy as np
-                    # Les imports mathématiques sont inclus dans la fonction générée ci-dessous
-                    
-                    # --- CONSTANTES GEOMETRIQUES ---
-                    # Si SYMORO a trouvé des constantes inconnues, il les a initialisées à 1.0
-                    # dans la fonction. Vérifiez les valeurs ci-dessous ou dans la fonction.
-                    ''')
-
-                main_block = textwrap.dedent(f'''\
-                    
-                    if __name__ == "__main__":
-                        # Test unitaire automatique
-                        print(f"🤖 Test du MGD pour le robot : {self.robo.name}")
-                        
-                        # Configuration zéro (tous les angles/déplacements à 0)
-                        # Le code généré attend une liste en argument
-                        q_zero = [0.0] * {len(q_vars)}
-                        
-                        print(f"\\nTest avec configuration q = {{q_zero}}")
-                        
-                        try:
-                            # Appel de la fonction générée
-                            # Note: La fonction générée par SYMORO attend *args, 
-                            # donc on passe la liste directement.
-                            T = calcul_mgd(q_zero)
-                            
-                            print("\\nMatrice de Transformation T (0 -> Effecteur) :")
-                            # On convertit en array numpy pour un affichage propre si possible
-                            print(np.array(T))
-                            
-                            print("\\n✅ Position de l'effecteur (x, y, z) :")
-                            print(np.array(T)[:3, 3])
-                            
-                        except Exception as e:
-                            print(f"❌ Erreur lors de l'exécution : {{e}}")
-                            import traceback
-                            traceback.print_exc()
-
-                        print("\\n💡 Astuce : Modifiez la liste 'q_zero' dans ce script pour tester d'autres positions !")
-                    ''')
-
-                # Assemblage final
-                full_content = header + "\n" + func_body + "\n" + main_block
-
-                # 7. Écriture du fichier
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(full_content)
-
-                messagebox.showinfo("Succès", f"✅ Script Python généré et formaté !\n\nEmplacement : {file_path}")
-
-            except Exception as e:
-                print(f"Erreur export: {e}")
-                import traceback
-                traceback.print_exc()
-                messagebox.showerror("Erreur Export", f"Impossible de générer le script :\n{e}")
-                    
     def show_help(self):
         """Afficher l'aide"""
         help_window = tk.Toplevel(self.root)
