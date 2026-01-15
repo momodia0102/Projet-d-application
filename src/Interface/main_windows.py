@@ -44,7 +44,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
 
     def _setup_window(self):
         """Configure la fenêtre principale"""
-        self.root.title("Robot Modeler 🤖 - Centrale Nantes")
+        self.root.title("Robot Modeling 🤖 - Centrale Nantes")
         self.root.geometry("1400x900")
         self.root.minsize(1200, 700)
         self.root.configure(bg=COLORS['bg_light'])
@@ -109,7 +109,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
         title_frame = tk.Frame(header, bg=COLORS['primary'])
         title_frame.pack(expand=True)
         
-        tk.Label(title_frame, text="🤖 ROBOT MODELER",
+        tk.Label(title_frame, text="🤖 ROBOT MODELING",
                 font=('Arial', 24, 'bold'),
                 bg=COLORS['primary'],
                 fg=COLORS['secondary']).pack(side=tk.LEFT, padx=10)
@@ -648,7 +648,7 @@ class MainWindow(ParameterMixin, VisualizationMixin, ResultMixin):
                 bg=COLORS['primary'], fg=COLORS['secondary'],
                 pady=20).pack()
         
-        tk.Label(header, text="ROBOT MODELER", font=('Arial', 18, 'bold'),
+        tk.Label(header, text="ROBOT MODELING", font=('Arial', 18, 'bold'),
                 bg=COLORS['primary'], fg=COLORS['secondary']).pack()
         
         tk.Label(header, text="Version 1.0", font=('Arial', 10),
